@@ -1,4 +1,4 @@
-![Pasted image.png.png](/home/user/data/notes/engine-about/代码文档/assets/Pasted image.png)
+![Pasted image.png.png](./assets/Pasted image.png)
 
 lake需要queue这个资源而只有ocean的时候不需要。
 
@@ -22,11 +22,11 @@ action里面多了一个位置的参数：
 
 在任意 node 下右击按下图进行创建，并调控相应参数后即可创建对应网格的湖泊。
 
-<img src="/home/user/data/notes/engine-about/代码文档/assets/image2024-2-5_13-42-46.png" alt="image2024-2-5_13-42-46" style="zoom:50%;" />
+<img src="./assets/image2024-2-5_13-42-46.png" alt="image2024-2-5_13-42-46" style="zoom:50%;" />
 
 场景中出现对应配置的湖泊效果，其形状由参数 Lake model path 设定网格决定，例："lake_model_path": "models/lake.fbx",
 
-<img src="/home/user/data/notes/engine-about/代码文档/assets/image2024-2-4_21-58-58 (1).png" alt="image2024-2-4_21-58-58 (1)" style="zoom:50%;" />
+<img src="./assets/image2024-2-4_21-58-58 (1).png" alt="image2024-2-4_21-58-58 (1)" style="zoom:50%;" />
 
 
 
