@@ -11,4 +11,4 @@
 学习
 
 - 贴花笔记
-- opengl三修（尝试实现shader toy上的全球水）
+- opengl三修
