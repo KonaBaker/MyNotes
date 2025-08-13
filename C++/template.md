@@ -192,3 +192,54 @@ class MyClass {
 
 上例中`typename T::SubType* ptr;` 中的 typename 用于澄清 SubType 是定义在 class T 内的一个**类型**(而不是成员)，且 ptr 是一个 SubType 类型指针。
 
+
+
+### concept和requires子句
+
+**concept**
+
+在编译器检查模板实参是否满足指定的约束。
+
+```
+template<typename T>
+concept require_name = requires {
+
+};
+
+template <require_name T>
+//这里才写模板类或者函数，正常你要写的东西
+```
+
+另一种写法：
+```
+template<typename T> requires xxxxxx
+//正常写
+```
+
+
+
+
+
+
+
+**requires**
+
+`requires ( parameter-list(optional) ) { requirement-seq }`
+
+**`requires`表达式的判定标准:对`requires`表达式进行模板实参的替换,如果替换之后出现无效类型,或者违反约束条件,则值为`false`,反之为`true`**
+
+```
+ template <class T>
+ concept Check = requires {
+     T().clear();
+ };
+ 
+ template <Check T>
+ struct G {};
+ 
+ G<std::vector<char>> x;      // 成功
+ G<std::string> y;            // 成功
+ G<std::array<char, 10>> z;   // 失败
+```
+
+要求序列以分号分隔可以有多个
