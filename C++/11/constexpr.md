@@ -1,12 +1,12 @@
-![pointer to const int](./assets/202301282219885.png)
+![pointer to const int](../assets/202301282219885.png)
 
-![pointer to int](./assets/202301282218022.png)
+![pointer to int](../assets/202301282218022.png)
 
-![const pointer to int const](./assets/202301282219514.png)
+![const pointer to int const](../assets/202301282219514.png)
 
-![pointer to int const](./assets/202301282219096.png)
+![pointer to int const](../assets/202301282219096.png)
 
-![const pointer to int](./assets/202301282219229.png)
+![const pointer to int](../assets/202301282219229.png)
 
 
 

@@ -2,9 +2,7 @@
 
 **```^^```反射运算符**
 
-从它的操作数生成一个返回值（反射值）。
-
-我们后续可以对这个元信息（包含名字、成员等等）进行操作
+从它的操作数生成一个返回值（反射值）。我们后续可以对这个元信息（包含名字、成员等等）进行操作
 
 操作数支持：
 
@@ -17,10 +15,7 @@
 
 ```
 constexpr auto type = ^^int;        
-constexpr auto var = ^^my_variable; 
-
 [: type_photo :] x = 42;        // 相当于 int x = 42;
-auto value = [: var_photo :];   // 相当于 auto value = my_variable;
 ```
 
 对变量、函数、模板以及一个类/结构体的部分成员都是可以的。
@@ -126,6 +121,19 @@ static_assert(^^Alias1 != fn());	  // 不同作用域
 反射代表的是**实体**，不是**声明**。
 
 ```
+int f(int = 1);      // 声明1：默认参数是1
+
+int g() {
+    int f(int = 2);  // 声明2：同一个函数，但默认参数是2
+    return f();      // 调用 f(2)，使用最近的默认参数
+}
+
+int r = f();         // 调用 f(1)，使用全局声明的默认参数
+```
+
+
+
+```
 int f(int = 1);
 constexpr auto f_refl = ^^f;
 
@@ -224,7 +232,16 @@ namespace std::meta {
 
 parent_of 获取**直接**包围它的类、函数或者是命名空间。
 
-dealias 底层实体、递归的，逐层玻璃所有的别名。
+dealias 底层实体、递归的，逐层剥离所有的别名。
+
+对于<type_traits>头文件，里面的_t是模板函数的别名、
+
+```
+template<typename T>
+using remove_const_t = typename remove_const<T>::type;
+```
+
+
 
 ```
 struct Point {
