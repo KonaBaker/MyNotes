@@ -1,6 +1,6 @@
 **invocation**
 
-最小的执行单位，代表这激素均按着色器的一次执行。
+最小的执行单位，代表着色器的一次执行。
 
 ```gl_GlobalInvocationID```唯一的全局ID
 
