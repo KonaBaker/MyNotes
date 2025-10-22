@@ -1,17 +1,3 @@
-![pointer to const int](../assets/202301282219885.png)
-
-![pointer to int](../assets/202301282218022.png)
-
-![const pointer to int const](../assets/202301282219514.png)
-
-![pointer to int const](../assets/202301282219096.png)
-
-![const pointer to int](../assets/202301282219229.png)
-
-
-
-
-
 #### constexpr
 
 常量表达式，可以作用在变量和函数上，一个 constexpr 变量是一个**编译时**完全确定的常数。一个 constexpr 函数至少对于某一组实参可以在编译期间产生一个**编译期**常数。

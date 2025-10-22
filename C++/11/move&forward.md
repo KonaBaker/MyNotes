@@ -1,4 +1,4 @@
-https://www.zhihu.com/search?type=content&q=std%3A%3Amove
+https://zhuanlan.zhihu.com/p/335994370
 
 **右值包含prvalue和xvalue**
 
@@ -73,11 +73,17 @@ int &&ref_a_right = std::move(a);
 
 移动构造函数，把被拷贝者的数据移动过来，被拷贝者就不要了，这样避免了深拷贝。
 
+> **注意：**以上两行是来解释移动构造函数的出现的原因，并不是std::move的功能。上述功能在std::move中实现
+
 包含如：重置数据指针等操作：但由于（上面提到的关键）const左值引用无法修改，左值引用又无法引用右值，所以使用右值引用和std::move来解决这个问题。
 
 例：在vector的push_back或者emplace_back中使用move就可以提高性能，因为其避免了深拷贝，但是要注意原数据就无了。（对于push_back和emplace_back的区别见C++17)
 
 > 并没有移动什么，单纯使用也不会有性能提升，相当于一个类型转换。方便接收参数，真正的移动语义是函数内部自己实现的，所以有性能提升
+
+**std::move并未实现任何移动语义**
+
+
 
 **std::forward**
 
@@ -87,4 +93,6 @@ int &&ref_a_right = std::move(a);
 
 - 当T为左值引用类型时，u将被转换为T类型的左值
 - 否则u将会被转换为T类型的一个右值
+
+
 
