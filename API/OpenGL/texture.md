@@ -145,5 +145,5 @@ glbindsampler
 
 绑定点设置遵循后覆盖原则。
 
-layoutbinding发生在链接阶段，gluniform发生在链接阶段，所以后者会覆盖前者。
+layoutbinding发生在编译阶段，gluniform发生在运行阶段，所以后者会覆盖前者。
 

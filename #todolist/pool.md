@@ -1,12 +1,14 @@
-工作
+待看知识点：
+c++:
 
-- flow card
-- lake card
-- 3588适配（最终版本提交，注释修饰）
-- 全球水（proland ocean代码需要在深入研究一下)
-- 月底提交的设计文档
+- std::optional
 
-学习
+- std::swap
 
-- 贴花笔记
-- opengl三修
+- contract
+- 内存布局
+- storage specifier
+
+graphics:
+
+- image
