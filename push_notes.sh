@@ -33,6 +33,8 @@ if [ "$branch" != "main" ]; then
 
     # 合并 PR（如果存在）
     gh pr merge --auto --squash || echo "❗合并失败，请手动检查 PR"
+    git reset --hard origin/main
+    git push --force-with-lease origin "$branch"
 fi
 
 echo "✅ 笔记已同步完成！"
