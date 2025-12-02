@@ -40,5 +40,15 @@
 
 > 见vertex array
 
+ 存储顶点数据format以及buffer objects（引用，并不是复制和冻结）。
+
+顶点属性编号从0到GL_MAX_VERTEX_ATTRIBS - 1。当某个属性的数组访问被禁用，则获得一个常量值，而不是从数组中提取值。
+
+``` glenablevertexarrayattrib(gluint vao, gluint index)```中index就是顶点属性编号。
+
+#### 顶点缓冲对象 vertex buffer object
+
+本质就是一个普通的buffer object。是顶点数据源。
+
 
 
