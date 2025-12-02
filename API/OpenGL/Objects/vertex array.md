@@ -4,17 +4,21 @@
 
 使用dsa直接启用属性数组。
 
-``` glvertexarrayvertexbuffer```
+``` glVertexArrayVertexBuffer```
 
-将一个vao的索引点和对应的vbo联系起来 
+将一个vbo绑定到一个buffer binding point（其取值范围为 0 到 GL_MAX_VERTEX_ATTRIB_BINDINGS - 1，通常该值为 16）。并指定stride和offset
 
-``` glvertexarrayattribformat```
+> 不是GL_MAX_VERTEX_ATTRIB，不是顶点属性
 
-规定顶点数组的组织方式.最后一个参数relativeoffset，表示从绑定的顶点缓冲区的起始位置到需要的第一个元素的距离（也就是数据偏移）
+``` glVertexArrayAttribFormat```
 
-``` glvertexarrayattribbinding```
+规定顶点数组的组织方式。这里是attribindex，是属性索引（范围从 0 到 GL_MAX_VERTEX_ATTRIBS-1）
 
-associate a vertex attribute and a vertex buffer binding
+最后一个参数relativeoffset，是一个**新增概念**。为了不同attrib使用同一个buffer(共享了stride和offset)，但是想实现**属性交错**表示从绑定的顶点缓冲区的起始位置到需要的第一个元素的距离（offset + relativeoffset）。
+
+``` glVertexArrayAttribBinding```
+
+将一个顶点属性和buffer binding关联（即一个attribindex和一个bindingindex）
 
 ``` glvertexarrayelemnetbuffer(vao, ebo)```
 
@@ -22,30 +26,53 @@ associate a vertex attribute and a vertex buffer binding
 
 
 
-可以分别的索引点联系不同的vbo
+**buffer binding point**: 聚合了以下数据：
 
-也可以只将0和一个大的vbo联系起来，通过format规定偏移和组织方式。
+- buffer objects
+- 该绑定点所有顶点属性的基础字节偏移量
+- 该绑定点所有顶点属性的字节步长
+- 该绑定点所有顶点属性的instance divisor
 
-dsa只是让数据设置的时候无需再进行绑定，当进行渲染的时候，还是要调用``` glbindvertexarray``` 进行绑定后再调drawcall.
+**format**:
+
+- 哪些属性处于开启状态（但仍由```glenablevertexarrayattrib```控制)
+- 顶点属性数据的大小、类型以及归一化设置
+- 关联的buffer binding point
+- 从其关联缓冲区绑定点基址偏移到顶点数据起始位置的字节偏移量
 
 
 
-**注意**
+例子：
 
-attribute location（attribindex) != binding point(binding index)
+```
+struct Vertex
+{
+  GLfloat position[3];
+  GLfloat normal[3];
+  Glubyte color[4];
+};
+ 
+Vertex vertices[VERTEX_COUNT];
+```
 
-attribute location是顶点属性的索引，对应layout(location = )
+```c++
+// 将buff这个buffer object 绑定到vao上的binding point 0,步长是Vertex结构体的大小。
+glVertexArrayVertexBuffer(vao, 0, buff, baseOffset, sizeof(Vertex));
 
-binding point 对应vao中的缓冲区绑定点
+// 开启vao中顶点属性索引0
+glEnableVertexArrayAttrib(vao, 0);
+// 顶点属性索引0 的大小类型。relativeoffset是成员的偏移。
+glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, position));
+// 将顶点属性索引和buffer binding point相关联。
+glVertexArrayAttribBinding(vao, 0, 0);
+glEnableVertexArrayAttrib(vao, 1);
+glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, normal));
+glVertexArrayAttribBinding(vao, 1, 0);
+glEnableVertexArrayAttrib(vao, 2);
+glVertexArrayAttribFormat(vao, 2, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(Vertex, color));
+glVertexArrayAttribBinding(vao, 2, 0);
+```
 
-在``` glvertexarrayvertexbuffer```中绑定的“索引”（此索引非彼索引）是binding point 一般一个buffer对应一个，这里是缓冲区绑定点，或者叫缓冲区索引。
+上述函数对于buffer binding point以及format的操作以及数据都是在vao的状态范畴，被封装在
 
-在``` glvertexarrayattribformat```中指定组织方式中，这里的索引是attribute point和着色器中的location对应。
-
-在``` glvertexarrayattribbinding```将一个attribute location和一个binding point 联系起来。
-
-总结来说，在glvavb中是将一系列buffer绑定到vao上，这时，每个buffer都有一个绑定点。
-
-format是用来划分数据组织方式，并将其和着色器中location对应。
-
-binding是指定哪个location从哪个buffer中读数据。
+vertices就是顶点流。buff就是承载顶点的buffer,是一个数据源。vertex array就是一个包含format和buffer引用的object。
