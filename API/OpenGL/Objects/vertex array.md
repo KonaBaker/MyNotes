@@ -4,7 +4,7 @@
 
 使用dsa直接启用属性数组。
 
-``` glVertexArrayVertexBuffer```
+``` glVertexArrayVertexBuffer``` 
 
 将一个vbo绑定到一个buffer binding point（其取值范围为 0 到 GL_MAX_VERTEX_ATTRIB_BINDINGS - 1，通常该值为 16）。并指定stride和offset
 

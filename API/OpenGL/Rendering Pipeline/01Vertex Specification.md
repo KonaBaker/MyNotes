@@ -46,9 +46,83 @@
 
 ``` glenablevertexarrayattrib(gluint vao, gluint index)```中index就是顶点属性编号。
 
+---
+
 #### 顶点缓冲对象 vertex buffer object
 
 本质就是一个普通的buffer object。是顶点数据源。
 
+---
 
+#### 顶点格式 vertex format
+
+```glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, position));```
+
+上述代码定义了解析这些数据的方式。
+
+每个属性索引代表某种类型的向量，其分量长度只能为1~4,也就是上述例子中的size(3)。不必完全匹配vs使用的尺寸 (双精度除外）。vs少多余被忽略，vs多自动补全为（0, 0, 0, 1）。
+
+**分量类型**
+
+GL_FLOAT GL_UNSIGNED_BYTE等。
+
+对于normalize:
+
+GL_FALSE 浮点类型必须为这个，对于整数类型，按c语言风格直接转换， 如：255 -> 255.0f
+
+GL_TRUE 整数类型进行归一化，如： 255 - > 1.0f
+
+**矩阵**
+
+对于矩阵，上面说了分量长度最大为4,所以矩阵会被拆分，占用多个顶点属性索引。
+
+m行n列矩阵，占用n个顶点属性索引，没个索引大小为m。
+
+---
+
+#### 顶点缓冲区偏移量和步长
+
+```glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, position));```
+
+offsetof(Vertex, position)是**relativeoffset**
+
+**baseoffset** 是binding point 在buffer中的起始点。
+
+累加的部分是 **vertexindex * stride** 。
+$$
+Address=BufferAddress+baseoffset+(i×stride)+relativeoffset
+$$
+stride和baseoffset在binding point设置
+
+relativeoffset在format设置
+
+---
+
+#### index buffer
+
+``` glvertexarrayelemnetbuffer(vao, ebo)```
+
+绑定索引缓冲区到vao。
+
+---
+
+#### 实例化数组
+
+> 除了让属性随着“顶点”变化，还可以让属性随着“实例”变化。
+
+```
+glVertexArrayBindingDivisor(GLuint vaobj, GLuint bindingindex, GLuint divisor)
+```
+
+你需要画一百个实例的“草丛”，每个草丛位置不一样。将100个位置存进普通的vbo,在读取的时候，根据instanceID来读。
+
+通常情况下opengl读取的索引是```gl_VertexID```，设置Divisor后：index = gl_InstanceID / N
+
+
+
+由此对于实例数据也占用了一个顶点属性（占了一个vbo)。顶点属性opengl通常最多有16个。
+
+---
+
+### 顶点渲染 Vertex Rendering 
 
