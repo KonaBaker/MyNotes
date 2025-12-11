@@ -36,6 +36,16 @@ dsa方式，不用指定target，直接传入buffer的数字名称即可。
 
 复制
 
+**buffer的分配在哪里？**
+
+`glCreateBuffers` + `glNamedBufferStorage`
+
+cpu:创建handle,在内存中记录元数据，主要是进行内存管理
+
+gpu:driver会在显存中申请一块实际的区域。耗时很大
+
+> buffer要预先分配，不要每帧分配。
+
 ---
 
 **mapping**

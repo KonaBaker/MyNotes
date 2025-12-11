@@ -76,7 +76,7 @@ GL_TRUE 整数类型进行归一化，如： 255 - > 1.0f
 
 对于矩阵，上面说了分量长度最大为4,所以矩阵会被拆分，占用多个顶点属性索引。
 
-m行n列矩阵，占用n个顶点属性索引，没个索引大小为m。
+m行n列矩阵，占用n个顶点属性索引，每个索引大小为m。
 
 ---
 
@@ -111,6 +111,7 @@ relativeoffset在format设置
 > 除了让属性随着“顶点”变化，还可以让属性随着“实例”变化。
 
 ```
+glEnableVertexArrayAttrib(vao, attrindex);
 glVertexArrayBindingDivisor(GLuint vaobj, GLuint bindingindex, GLuint divisor)
 ```
 
@@ -118,11 +119,58 @@ glVertexArrayBindingDivisor(GLuint vaobj, GLuint bindingindex, GLuint divisor)
 
 通常情况下opengl读取的索引是```gl_VertexID```，设置Divisor后：index = gl_InstanceID / N
 
-
+在vao设置并启用相关
 
 由此对于实例数据也占用了一个顶点属性（占了一个vbo)。顶点属性opengl通常最多有16个。
 
 ---
 
 ### 顶点渲染 Vertex Rendering 
+
+介绍顶点的绘制函数。这一过程是指数组中指定的顶点数据，并使用这些数据渲染图元的过程。
+
+如上述，vao需要设置正确（使用索引需要绑定ebo)才能进行渲染。
+
+非索引```gl*Draw*Arrays*```索引 ```gl*Draw*Elements*```
+
+#### 图元重启
+
+```c++
+GLushort indices[] = {
+    0, 1, 2, 3, 
+    0xFFFF,      // 切断上面的 Strip，开始新的
+    4, 5, 6, 7 
+};
+glEnable(GL_PRIMITIVE_RESTART);
+glPrimitiveRestartIndex(0xFFFF);
+glDrawElements(GL_TRIANGLE_STRIP, 9, GL_UNSIGNED_SHORT, 0);
+```
+
+一种```glMultiDrawElements```的替代方案
+
+图元重启通常在使用STRIP图元时，用于打断当前的连续，开始新的连续。在draw call内部。
+
+glmultiDrawElements相当于for循环里面调用draw call，减少调用次数。
+
+```012 123 456 567```
+
+#### 直接渲染
+
+绘制命令将各种渲染参数直接作为函数参数提供。
+
+**与上一次绘制命令使用不同的 VAO 进行渲染（绑定 VAO 或修改 VAO 状态），通常是一项开销较大的操作。**
+
+>主要是cpu耗时：切换的时候，Driver会进行验证和生成命令等。
+>
+>gpu端：切换buffer,切换数据来源，vram->缓存
+
+**注意**：dsa并不是bindless，不能消除硬件层面的状态切换开销，彻底解决的是bindless texture以及bindless graphics(gpu直接指针访问内存)。
+
+多重渲染：```glMultiDrawElements```是一个原子操作，期间vao\vbo\ebo以及shader\uniform不更换。
+
+#### Transform feedback
+
+#### 间接渲染
+
+#### 条件渲染
 
