@@ -41,6 +41,30 @@ int foo() {
 
 
 
+#### const
+
+> 默认修饰左边，如果左边什么都没有才修饰右边
+
+```const A& a;```以及```A const& a```
+
+两者等价，修饰的都是A。a 是一个reference to ```const A```，不能通过这个引用对a这个对象进行修改。
+
+因为“引用本身”本来就不能修改，所以没有const修饰“引用本身”这一说法。例如：
+
+```A& const a``` 
+
+编译错误。
+
+```const int*```和```int const*```
+
+两者等价，const修饰int,表示一个pointer to ```const int```
+
+```int* const```
+
+“指针本身”不能修改
+
+
+
 
 
 
