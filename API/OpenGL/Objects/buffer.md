@@ -6,6 +6,36 @@
 
 使用DSA模式，无需在bind到target上。
 
+---
+
+**关于绑定**
+
+- bind to context
+
+```glBindBuffer(GL_ARRAY_BUFFER, buffer);```
+
+DSA消灭这种绑定
+
+- object to object
+
+```glVertexArrayVertexBuffer(vao, binding, buffer, offset, stride);```
+
+DSA使用这种，不依赖当前状态
+
+- binding point
+
+```glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);```
+
+**这种是需要重点区分的**
+
+DSA替代的不是这种，这是逻辑绑定给shader使用，不是修改对象状态。
+
+- ```glBindVertexArray```
+
+配置时无须绑定，绘制时需要绑定。
+
+---
+
 **immutable**
 
 ```glnamedbufferstorage``` 
@@ -45,6 +75,20 @@ cpu:创建handle,在内存中记录元数据，主要是进行内存管理
 gpu:driver会在显存中申请一块实际的区域。耗时很大
 
 > buffer要预先分配，不要每帧分配。
+
+---
+
+#### indexed buffer target
+
+不是只有一个全局绑定槽，而是有 **一组可索引的绑定点（binding points）** 的 buffer target。通过layout(binding)访问。有哪些？UBO\SSBO\ACO\transformfeedback
+
+```glBindBufferBase```
+
+把 `buffer` 绑定到 `target` 的索引 `index`,把buffer公开给着色器去访问
+
+```glBindBufferRange```
+
+与上面的不同是只公开缓冲的一部分。
 
 ---
 
