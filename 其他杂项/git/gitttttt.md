@@ -87,3 +87,7 @@ git merge调用的是bugFix，而不是origin/bugFix
 - 使用merge
 
 <img src="./assets/image-20251114224944070.png" alt="image-20251114224944070" style="zoom:67%;" />
+
+**git reset**
+
+HEAD和分支一起回撤到某一次提交（不必要是祖先节点，任何节点即可）
