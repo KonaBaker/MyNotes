@@ -4,5 +4,8 @@
 
 ```c++
 const int& get_const_ref() { return x; };
+auto get_const_ref() {return x;}
 decltype(auto) d = get_const_ref();
+decltype(get_const_ref) // int()
+decltype(d) // const int&
 ```

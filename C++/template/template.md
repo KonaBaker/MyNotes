@@ -1,3 +1,7 @@
+**function template**
+
+
+
 ```
 template<typename T>
 T func(T a, T b) {}
