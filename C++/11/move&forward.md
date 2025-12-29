@@ -1,19 +1,72 @@
 https://zhuanlan.zhihu.com/p/335994370
 
+lvalue和xvalue 是描述对象或者函数位置的表达式。
+
 **右值包含prvalue和xvalue**
 
-**prvalue**
+**prvalue** （c++17以后语义发生了根本性变化）
 
-对于一个纯右值是可移动的，比如：
+用于初始化的表达式，没有内存地址，没有身份。比如：
 
-```c++
-std::string result = std::string("hello");  // 临时对象可以安全移动
-std::string result = getValue();            // 函数返回值可以安全移动
-```
+- `std::string("hello"); ` 临时对象
+- `getValue(); `  函数返回值（非引用）
+- `nullptr` ` true ` `42` 字面量（字符串字面量除外）
+- `a + B` 运算表达式的结果（非引用）
+- lambda表达式
 
 **xvalue**
 
-既有身份又可移动
+资源可以被复用，有内存地址，但是马上要die。
+
+- `std::move(a)`
+- `static_cast<char &&>(ch)`
+- 亡值数组的访问。
+- `a.x` a是右值且x非引用、非静态
+
+---
+
+**notes：**
+
+c++ 17引入**临时量实质化**。 **延迟对象的创建，直到最后一刻**
+
+![image-20251229153704108](./assets/image-20251229153704108.png)
+
+纯右值主要就是用来初始化的值。是一个**初始化指令**。纯右值不会产生实际存在的临时对象。
+
+当我需要绑定引用，或者访问成员的时候，会进行实质化。如下：
+
+纯右值转换到临时对象。`A().x`z中 `A()`就被从纯右值转换成了亡值，去访问
+
+> **任何完整类型 T 的纯右值，可转换成同类型 T 的亡值**
+
+**for what?**
+
+- 技术上：为了实现c++17的强制rvo/nrvo。
+- 效果上：传递未实质化的对象。
+
+```c++
+struct Immovable {
+    Immovable() = default;
+    
+    // 删除了拷贝构造和移动构造
+    Immovable(const Immovable&) = delete;
+    Immovable(Immovable&&) = delete; 
+};
+
+// 函数返回一个 prvalue
+Immovable make_it() {
+    return Immovable(); // C++14: 错误！需要移动构造函数来从函数移出
+                        // C++17: 合法！这只是返回一张蓝图
+}
+
+int main() {
+    // C++14: 错误！需要移动构造函数来初始化 x
+    // C++17: 合法！
+    Immovable x = make_it(); 
+}
+```
+
+---
 
 ```c++
 auto&& result = std::move(s);  
@@ -25,11 +78,15 @@ auto&& result = std::move(s);
 >
 > ```ref_a_right```就是左值```std::move(a)```的返回值就是右值。
 
+上面这句话其实表达不准确，因为值类型判断的是表达式，而不是某个类型（右值引用）。
+
+
+
 **左值&右值**（引用）
 
 表达式结束之后是否依然存在。持久/临时。在内存中是否占有确定位置。
 
-也可以通过是否能去地址进行判断。
+也可以通过是否能取地址进行判断。（c++标准中规定，`&`的操作数必须是一个左值，虽然xvalue有内存，但是你无法通过取址运算符简单获取，所以这句话是**正确的**）
 
 
 
@@ -81,9 +138,9 @@ int &&ref_a_right = std::move(a);
 
 > 并没有移动什么，单纯使用也不会有性能提升，相当于一个类型转换。方便接收参数，真正的移动语义是函数内部自己实现的，所以有性能提升
 
+在overload resolution中xvalue被视为rvalue优先匹配移动构造函数或移动赋值操作符，而lvalue会匹配拷贝。
+
 **std::move并未实现任何移动语义**
-
-
 
 **注意**
 
@@ -91,9 +148,15 @@ int &&ref_a_right = std::move(a);
 
 
 
+---
+
+
+
+#### 待补充或完善待消化待吸收：
+
 **std::forward**
 
-和std::move一样本身也是类型转换。其更加强大，move只能转出右值，但是forward都可以。
+和std::move一样本身也是类型转换。其更加强大，move只能转出右值，但是forward都可以。主要用于模板编程的参数转发中。
 
 ```std::forward<T>(u)```
 
@@ -101,4 +164,28 @@ int &&ref_a_right = std::move(a);
 - 否则u将会被转换为T类型的一个右值
 
 
+
+xvalue **可以**出现在赋值号左边（LHS），前提是该对象的赋值运算符没有被“引用限定符（ref-qualifier）”禁止。
+
+```c++
+struct S {
+    S& operator=(int) { return *this; } // 普通赋值
+};
+
+void func() {
+    S s;
+    std::move(s) = 10; // <--- 合法！
+    // std::move(s) 是 xvalue。
+    // 这里调用了 S::operator=(int)，这是完全合法的。
+}
+```
+
+**只有**当类明确加了 `&` 限定符时，xvalue 才不能赋值：
+
+```c++
+struct SafeS {
+    SafeS& operator=(int) & { return *this; } // 只能被 lvalue 调用
+};
+// std::move(SafeS()) = 10; // <--- 只有这时才编译错误
+```
 
