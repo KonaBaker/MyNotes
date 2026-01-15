@@ -20,11 +20,26 @@
 
 git rebase upstream branch
 
-upstream是reabase到哪个提交上，branch 会自动切换到这个分支。
+upstream是rebase到哪个提交上，branch 会自动切换到这个分支。
 
 <img src="./assets/image-20251114221958968.png" alt="image-20251114221958968" style="zoom: 67%;" />
 
 将当前分支的提交"移动"到目标分支的最新提交之后，**重写提交历史**，使历史呈线性。不要在公共分支上使用。
+
+```
+(feature)
+git rebase master
+---
+<conflict>
+可以使用git status查看冲突
+git add 保留文件
+git rm 删除文件
+---
+git add 
+git rebase continue //注意千万不要commit
+(master)
+git merge feature
+```
 
 **git pull**
 
