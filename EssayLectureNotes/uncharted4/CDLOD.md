@@ -130,3 +130,67 @@ bool Node::LODSelect(int ranges[], int lodLevel, Frustum frustum)
 
 在选择的过程中，我们要存储位置，size，lod level等等信息用于之后的渲染。
 
+**部分渲染**：一个子节点是否渲染不取决于父节点及其其他子节点。
+
+下图黑色部分就是cull掉的部分。
+
+![image-20260120133014780](./assets/image-20260120133014780.png)
+
+**frustum culling**
+
+- 如果一个地形块在背后或者屏幕外，在cpu中遍历的时候就可以直接丢弃。
+
+### rendering
+
+迭代所有被选中的节点和他们的数据
+
+### morph implementation
+
+![image-20260120140720220](./assets/image-20260120140720220.png)
+
+中间三角形，8个变为2个的过程。
+
+逐渐放大两个三角形并缩小其余六个三角形。
+
+此过程和之前的lod过渡不同。没有产生接缝或者tjunction。没有让顶点直接消失。
+
+而是采取逐渐移动顶点的方案。
+
+**如何移动？**
+
+让所有奇数索引的点，平滑的移动到它的左边或者上边的偶数索引点上。
+
+光栅化会自动略过面积为0的三角形。
+
+```c++
+// Morphs input vertex UV from high- to low-detailed mesh position
+// - gridPos: normalized [0, 1] .xy grid position of the source vertex
+// - vertex: vertex.xy components in world space
+// - morphK: morph value
+
+const float2 g_gridDim = float2(64, 64);
+
+float2 morphVertex(float2 gridPos, float2 vertex, float morphK)
+{
+    float2 fracPart =
+        frac(gridPos.xy * g_gridDim.xy * 0.5) * 2.0 / g_gridDim.xy;
+
+    return vertex.xy - fracPart * g_quadScale.xy * morphK;
+}
+
+```
+
+对于偶数索引 fracpart为0.0不动，对于奇数索引 fracpart为移动一个格子的距离
+
+高度z的采样需要使用双线性过滤，平滑过渡，避免产生跳变。
+
+**一致性**：
+
+在morphK进行选择的时候，两个node之间公用的顶点，可能会因为微小误差而选取不同的morphK而导致裂缝。
+
+因此需要确保node公用的顶点选取的morphK一致。
+
+因此这里采取近似距离,忽略高度（因为采样可能导致细微误差），这里的近似值，只是在morphK计算的时候采取。
+
+3d距离的计算选取lod仍然是在cpu中进行的，近似计算和变形是在gpu中的。
+
