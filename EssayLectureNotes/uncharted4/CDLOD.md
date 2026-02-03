@@ -128,6 +128,8 @@ bool Node::LODSelect(int ranges[], int lodLevel, Frustum frustum)
 }
 ```
 
+
+
 在选择的过程中，我们要存储位置，size，lod level等等信息用于之后的渲染。
 
 **部分渲染**：一个子节点是否渲染不取决于父节点及其其他子节点。
