@@ -41,20 +41,15 @@ layout(std140, binding = 0) uniform Matrices {
 glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboID);
 ```
 
+### limiations
+
+`GL_MAX_UNIFORM_BUFFER_BINDINGS`限制整个context的绑定数量。
+
+对于每个shader stage也是有限制的：
+`GL_MAX_VERTEX_UNIFORM_BLOCKS`, `GL_MAX_GEOMETRY_UNIFORM_BLOCKS`, or` GL_MAX_FRAGMENT_UNIFORM_BLOCKS.`
+
+SSBO的限制通常比UBO要宽松许多
 
 
 
-
-
-
-### interface block
-
-```c++
-storage_qualifier block_name
-{
-  <define members here>
-} instance_name;
-```
-
-
-
+UBO不能使用std430的内存布局。
