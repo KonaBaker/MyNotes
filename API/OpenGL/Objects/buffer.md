@@ -26,6 +26,10 @@ DSA使用这种，不依赖当前状态
 
 ```glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);```
 
+支持计数器buffer、transform feedback buffer、uniform buffer 、ssbo这四种buffer
+
+对于不同的 target index是独立的。
+
 **这种是需要重点区分的**
 
 DSA替代的不是这种，这是逻辑绑定给shader使用，不是修改对象状态。

@@ -1,12 +1,10 @@
-### 顶点规范 vertex specification
+# 顶点规范 vertex specification
 
 顶点规范是指为特定着色器程序设置必要渲染对象（VAO\VBO等）的过程，以及使用这些对象进行渲染的过程（发起draw/call)。
 
 下面就是介绍，有哪些对象，以及如何设置他们的属性展开。
 
----
-
-#### 理论基础
+## 理论基础
 
 **顶点流 vertex stream**
 
@@ -123,9 +121,7 @@ glVertexArrayBindingDivisor(GLuint vaobj, GLuint bindingindex, GLuint divisor)
 
 由此对于实例数据也占用了一个顶点属性（占了一个vbo)。顶点属性opengl通常最多有16个。
 
----
-
-### 顶点渲染 Vertex Rendering 
+## 顶点渲染 Vertex Rendering 
 
 介绍顶点的绘制函数。这一过程是指数组中指定的顶点数据，并使用这些数据渲染图元的过程。
 
@@ -365,3 +361,8 @@ glMultiDrawArraysIndirectCount(GL_TRIANGLES, 0, 0, 10000, 0);
 
 #### 条件渲染
 
+## primitive 图元
+
+之前介绍的顶点流概念，除了从顶点规范定义的并由顶点着色器处理的顶点渲染命令以外。还有可能来自细分着色器和集合着色器。
+
+有顶点流的地方就会有图元：如何将该流分解为有序的基本图元序列：点、线或者三角形。
