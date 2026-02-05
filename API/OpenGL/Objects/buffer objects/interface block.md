@@ -67,7 +67,47 @@ lights[gl_VertexID % 4].color // ❌
 
 **输入与输出**
 
+## Buffer Backed
+
+这部分UB和SSB是相似的，所以加下来介绍得是通用的
+
+> buffer backed 表示他们是来自于 buffer object
+
 **矩阵存储顺序**
 
+`layout(row_major/column_major) uniform MatrixBlock`
+
+但是这并不会改变glsl的处理方式，glsl**永远是**列主序的，它只会影响glsl从buffer中获取数据的方式。
+
 **内存布局**
+
+默认是shared
+
+编译器说了算：需要openglAPI查询偏移量。
+
+- packed
+
+为了节省空间，尽可能紧凑的挤压变量，把一些不用的变量优化掉。不同驱动程序结果可能不同。
+
+不同shader之间也不能共享，每个shader编译出来的布局可能也不同。
+
+- shared
+
+和packed一样，除了以下两点：
+
+1.不会优化掉变量。
+
+2.
+
+标准说了算：
+
+- std140
+
+比较浪费，强制对齐单元N
+
+- std430
+
+仅SSBO，比std430更紧凑，类似c++struct中的对齐方式。SSBO一般采用这个。
+
+- 
 
