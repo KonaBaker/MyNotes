@@ -15,7 +15,7 @@ storage_qualifier block_name
 
 **block name**：在**opengl**中使用（DSA一般用不到）
 
-**instance name** : 在**glsl**中使用，optional. .访问成员需要`instance_name.member`.如果没有声明，意味着是全局的，那么可以直接访问成员`member`，此时如果在block外声明同名member就会编译错误。
+**instance name** : 在**glsl**中使用，optional.  访问成员需要`instance_name.member`.如果没有声明，意味着是全局的，那么可以直接访问成员`member`，此时如果在block外声明同名member就会编译错误。
 
 instance name更像是一个**名字空间**。**注意：不能类比结构体和实例化对象这一概念**
 
@@ -69,7 +69,7 @@ lights[gl_VertexID % 4].color // ❌
 
 ## Buffer Backed
 
-这部分UB和SSB是相似的，所以加下来介绍得是通用的
+这部分UB和SSB是相似的，所以接下来介绍得是通用的
 
 > buffer backed 表示他们是来自于 buffer object
 
@@ -79,11 +79,11 @@ lights[gl_VertexID % 4].color // ❌
 
 但是这并不会改变glsl的处理方式，glsl**永远是**列主序的，它只会影响glsl从buffer中获取数据的方式。
 
-**内存布局**
+**内存布局**(cpu应用程序和shader之间需要约定对齐)
 
-默认是shared
+默认是shared.
 
-编译器说了算：需要openglAPI查询偏移量。
+***编译器说了算：需要openglAPI查询偏移量。**
 
 - packed
 
@@ -97,11 +97,13 @@ lights[gl_VertexID % 4].color // ❌
 
 1.不会优化掉变量。
 
-2.在不同program之间的相同定义，保证相同的布局，也就是可以共享。
+2.相同的定义会在不同program之间，不同shader之间，保证相同的布局，也就是可以共享。
 
-同时也会要求
+虽然shader之间保持了一致，但是cpu仍然不知道具体的布局。
 
-标准说了算：
+> 使用上述两种，需要繁琐的查询变量偏移量，然后将数据传递到buffer
+
+***标准说了算：**
 
 - std140
 
@@ -111,5 +113,21 @@ lights[gl_VertexID % 4].color // ❌
 
 仅SSBO，比std430更紧凑，类似c++struct中的对齐方式。SSBO一般采用这个。
 
-- 
+> 使用上述两种，可以直接使用struct,控制好布局，一次性上传。
+
+```
+layout(std430, binding = 0) buffer MyBuffer {
+    float scale;    // 占用 4 字节
+    vec3  position; // ❗️规定：vec3 必须在 16 字节对齐的地址上起始
+};
+```
+
+```c++
+struct MyData {
+    float scale;
+    
+    // 强制 C++ 把 position 放到 16 的倍数的地址上
+    alignas(16) glm::vec3 position; 
+};
+```
 
