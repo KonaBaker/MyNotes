@@ -1,74 +1,153 @@
+# Buffer Object
 
+> **Buffer Objects** are OpenGL Objects that store an array of unformatted memory allocated by the OpenGL context (AKA the GPU). 
 
-### Buffer
-
-缓冲对象持有一个任意大小的线性内存数组，在使用之前需要先分配这块内存。有mutable和immutable两种分配方式。
+由驱动维护的opengl context（状态机）。驱动去划分显存
 
 使用DSA模式，无需在bind到target上。
 
----
+## creation 创建
 
-**关于绑定**
+缓冲对象持有一个任意大小的线性内存数组，在使用之前需要先分配这块内存。有mutable和immutable两种分配方式。
 
-- bind to context
+### immutable
 
-```glBindBuffer(GL_ARRAY_BUFFER, buffer);```
+使用该方式，将无法重新分配该存储空间。但是可以通过**无效化命令**或者**map buffer**来使其失效。
 
-DSA消灭这种绑定
-
-- object to object
-
-```glVertexArrayVertexBuffer(vao, binding, buffer, offset, stride);```
-
-DSA使用这种，不依赖当前状态
-
-- binding point
-
-```glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);```
-
-支持计数器buffer、transform feedback buffer、uniform buffer 、ssbo这四种buffer
-
-对于不同的 target index是独立的。
-
-**这种是需要重点区分的**
-
-DSA替代的不是这种，这是逻辑绑定给shader使用，不是修改对象状态。
-
-- ```glBindVertexArray```
-
-配置时无须绑定，绘制时需要绑定。
-
----
-
-**immutable**
-
-```glnamedbufferstorage``` 
+```void glNamedBufferStorage(GLuint buffer, GLsizeiptr size, const GLvoid *data, GLbitfield flags);``` 
 
 dsa方式，不用指定target，直接传入buffer的数字名称即可。
 
-**mutable**
+**flags**
 
-```glnamedbufferdata```
+flags约定了一些用户读写buffer的行为。
+
+例如：
+
+- `GL_MAP_READ_BIT` 允许通过映射缓冲区来读取数据。
+- `GL_DYNAMIC_STORAGE_BIT` 允许通过`glNamedBufferSubData`来修改存储内容。
+
+**一些常用flags例子**
+
+- 静态数据buffer，比如保存顶点这种基本不更改多次使用。或者由cs写入,其他进程读取的buffer，flags设置为0即可。
+- 当需要在cpu中读取数据的时候，一般使用`GL_MAP_READ_BIT`
+- 当需要修改的时候，可以使用`GL_MAP_WRITE_BIT`和`GL_DYNAMIC_STORAGE_BIT` 。但使用map一般会比使用`glNamedBufferSubData`
+
+块。因为map直接获得内存指针，而后者需要将你 **【待补充】**
+
+### mutable
+
+```void glNamedBufferData(GLuint buffer, GLsizeiptr size, const GLvoid *data, GLenum usage);```
 
 该操作会同时重新分配缓冲对象的存储空间。（可变存储空间）
 
----
+**buffer object usage**
 
-```glnamedbuffersubdata```
+多用途内存存储块**【待补充】**
+
+## Data Specification 数据规范
+
+```glNamedBufferSubData(GLuint buffer, GLintptr size, GLsizeiptr size, const GLvoid *data);```
 
 只更新数据，但不重新分配存储空间，可变与不可变均可使用
 
-```glclearnamedbuffersubdata```&```glclearnamedbufferdata```
+**注意**：这里是sub，如果没有sub就是可变存储空间的分配了，不是更改数据。
+
+### clearing
+
+```glClearNamedBufferSubData ``` & ```glClearNamedBufferData```
 
 清空缓冲区（部分）,都不会重新分配存储空间
+
+### copying
+
+```glCopyNamedBufferSubData(GLuint readbuffer, GLuint writebuffer, GLintptr readoffset, GLintptr writeoffset, GLsizeiptr size); ```
+
+从readbuffer复制到writebuffer
+
+### mapping
+
+使用`glNamedBufferSubData`可以向缓冲区提供数据，但是可能会造成**性能浪费**
+
+**关于性能**
+
+例如当某个算法生成的数据需要存入buffer objects，就必须先分配**临时内存**来存储这些数据，然后才能传递。读取数据也是类似的。
+
+- 使用`glNamedBufferStorage`会重新分配显存，肯定不能每帧都调用。
+- 使用`glNamedBufferSubData`在传输数据的时候，临时内存需要copy到pinned-memory后， 进行异步传输。
+
+map可以直接获取在cpu上的一块内存（pinned-memory，可以直接给dma进行传输到gpu)，在unmap后传送到gpu。
+
+
+
+直接获取缓冲区对象存储空间的指针然后再进行写入操作。接触绑定后指针就会失效。
+
+在映射过程中，不能调用任何导致opengl读取、修改或写入该缓冲区的函数（**持久映射方式**除外）。
+
+```glmapnamedbuffer```&```glmapnamedbufferrange```(整个和部分缓冲区)
+
+函数会返回对应缓冲区的指针。
+
+对于access参数可以设定：
+
+- GL_MAP_READ_BIT
+- GL_MAP_WRITE_BIT
+
+```glunmapnamedbuffer```
+
+是之前map的指针生效，此时缓冲区对象会更新做的修改
+
+**持久化mapping**
+
+使用不可变存储方式进行创建，flags包含GL_MAP_PERSISTENT_BIT。
+
+但是这是需要对映射指针写入数据进行刷新，从而使其**对opengl可见**
+
+```glflushmappednamedbufferrange```
+
+如果要使用opengl写入，用户读取：
+
+command(write) -> glmemorybarrier -> fence sycn->干其他事情->fence sync -> read from pointer
+
+### invalidation
+
+### streaming
+
+## General use 通用
+
+**特定目标**
+
+一般的buffer对象绑定到特定目标，opengl会按照既定格式和方式来操作这些数据。
+
+GL_ARRAY_BUFFER/GL_ELEMENT_ARRAY_BUFFER等等
+
+### 绑定索引目标
+
+某些目标是带索引的，可以绑定多个功能相似的缓冲对象
+
+```glbindbufferrange```&```glbindbufferbase```
+
+绑定到索引而不是仅绑定到目标（```glbindbuffer```)，且这种绑定不仅仅为了修改而绑定到上下文（虽然在DSA下，为了修改也无需绑定），而是之后确实需要使用（这可跟是否是DSA无关了哦）
+
+### 多重绑定和索引目标
+
+```glbindbuffersrange```
+
+将一个buffer数组（包含count个buffer)绑定到[first, first + count)
+
+是一个批量操作。
+
+
+
+
+
+
 
 ```glGetNamedBufferSubData```
 
 将数据读回cpu
 
-```glCopyNamedBufferSubData```
 
-复制
 
 **buffer的分配在哪里？**
 
@@ -98,36 +177,7 @@ gpu:driver会在显存中申请一块实际的区域。耗时很大
 
 **mapping**
 
-上面两个函数可以向缓冲区提供数据，但是可能会造成**性能浪费**：例如当某个算法生成的数据需要存入缓冲区对象，就必须先分配临时内存来存储这些数据，然后才能传递。读取数据也是类似的。
 
-**直接获取缓冲区对象存储空间的指针**然后再进行写入操作。
-
-在映射过程中，不能调用任何导致opengl读取、修改或写入该缓冲区的函数（持久映射方式除外）。
-
-```glmapnamedbuffer```&```glmapnamedbufferrange```(整个和部分缓冲区)
-
-函数会返回对应缓冲区的指针。
-
-对于access参数可以设定：
-
-- GL_MAP_READ_BIT
-- GL_MAP_WRITE_BIT
-
-```glunmapnamedbuffer```
-
-是之前map的指针生效，此时缓冲区对象会更新做的修改
-
-**持久化mapping**
-
-使用不可变存储方式进行创建，flags包含GL_MAP_PERSISTENT_BIT。
-
-但是这是需要对映射指针写入数据进行刷新，从而使其**对opengl可见**
-
-```glflushmappednamedbufferrange```
-
-如果要使用opengl写入，用户读取：
-
-command(write) -> glmemorybarrier -> fence sycn->干其他事情->fence sync -> read from pointer
 
 > 使用示例：
 >
@@ -377,25 +427,39 @@ command(write) -> glmemorybarrier -> fence sycn->干其他事情->fence sync -> 
 > }
 > ```
 
-**特定目标**
 
-一般的buffer对象绑定到特定目标，opengl会按照既定格式和方式来操作这些数据。
 
-GL_ARRAY_BUFFER/GL_ELEMENT_ARRAY_BUFFER等等
 
-**绑定索引目标**
 
-某些目标是带索引的，可以绑定多个功能相似的缓冲对象
+---
 
-```glbindbufferrange```&```glbindbufferbase```
+**关于绑定**
 
-绑定到索引而不是仅绑定到目标（```glbindbuffer```)，且这种绑定不仅仅为了修改而绑定到上下文（虽然在DSA下，为了修改也无需绑定），而是之后确实需要使用（这可跟是否是DSA无关了哦）
+- bind to context
 
-**多重绑定和索引目标**
+```glBindBuffer(GL_ARRAY_BUFFER, buffer);```
 
-```glbindbuffersrange```
+DSA消灭这种绑定（也有例外比如PBO）
 
-将一个buffer数组（包含count个buffer)绑定到[first, first + count)
+- object to object
 
-是一个批量操作。
+```glVertexArrayVertexBuffer(vao, binding, buffer, offset, stride);```
+
+DSA使用这种，不依赖当前状态
+
+- binding point
+
+```glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo);```
+
+支持计数器buffer、transform feedback buffer、uniform buffer 、ssbo这四种buffer
+
+对于不同的 target index是独立的。
+
+**这种是需要重点区分的**
+
+DSA替代的不是这种，这是逻辑绑定给shader使用，不是修改对象状态。
+
+- ```glBindVertexArray```
+
+配置时无须绑定，绘制时需要绑定。
 
