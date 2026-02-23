@@ -1,4 +1,12 @@
-### vertex array
+# vertex array object
+
+> A **Vertex Array Object** (VAO) is an OpenGL object that stores all of the state needed to supply vertex data (with one  minor exception noted below). It stores the format of the vertex data as well as the Buffer Objects providing the vertex data arrays.
+
+存储：
+
+- 顶点数据的格式
+- 存储顶点数据的buffer objects
+- 需要提供给顶点数据的su
 
 ``` glenablevertexarrayattrib(gluint vao, gluint index)```
 
@@ -76,3 +84,4 @@ glVertexArrayAttribBinding(vao, 2, 0);
 上述函数对于buffer binding point以及format的操作以及数据都是在vao的状态范畴，被封装在
 
 vertices就是顶点流。buff就是承载顶点的buffer,是一个数据源。vertex array就是一个包含format和buffer引用的object。
+
