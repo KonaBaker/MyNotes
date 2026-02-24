@@ -139,7 +139,22 @@ GL_ARRAY_BUFFER/GL_ELEMENT_ARRAY_BUFFER等等
 
 
 
+## SSBO vs UBO vs Buffer Texture
 
+**UBO**
+
+- 在数据量小，每帧更新，且所有shader都要用的时候
+- 比如几个矩阵，几个float
+
+**SSBO**
+
+- 需要写数据，需要原子操作，需要struct比较复杂的结构
+- 粒子系统，物理模拟,compute shader。
+
+**Buffer Texture**
+
+- 最好是只读，结构简单，线性访问，支持大数据量
+- 骨骼动画矩阵
 
 
 
