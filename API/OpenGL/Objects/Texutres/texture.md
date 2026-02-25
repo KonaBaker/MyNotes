@@ -38,22 +38,15 @@ texture有很多不同的**类型** 详细见 https://wikis.khronos.org/opengl/T
 - mipmap生成 可以整除
 - 内存对齐/寻址
 
-**Mipmaps**
+**Mipmaps** [缩小/远/纹理大/一像素多纹素]
 
 主要应对的就是屏幕像素和纹素的匹配问题：
 
 例如一个物体对应的纹理是400x400, 当你拉远距离的时候，屏幕上显示的像素只有200x200。
 
-此时一个像素要对应2x2的纹素。<img src="./assets/image-20260223131643289.png" alt="image-20260223131643289" style="zoom: 50%;" />
+此时一个像素要对应2x2的纹素。<img src="./C:/Users/KonaB/AppData/Roaming/Typora/draftsRecover/assets/image-20260223131643289.png" alt="image-20260223131643289" style="zoom: 50%;" />
 
-**如何选择？  - filter**
 
-- `GL_NEAREST` 临近选择
-- `GL_LINEAR` 附近插值
-
-再远的情况下：线性过滤会产生摩尔纹。就需要**mipmap**
-
-针对不同层的mipmap选择也有nearest和linear。
 
 每个 mipmap 在链中都是前一级尺寸的一半（向下取整），直至所有维度都缩减为 1。
 
@@ -65,7 +58,7 @@ texture有很多不同的**类型** 详细见 https://wikis.khronos.org/opengl/T
 
 ## Texture Objects
 
-<img src="./assets/image-20260223130324412.png" alt="image-20260223130324412" style="zoom: 50%;" />
+<img src="./C:/Users/KonaB/AppData/Roaming/Typora/draftsRecover/assets/image-20260223130324412.png" alt="image-20260223130324412" style="zoom: 50%;" />
 
 > 关于这里的组成是针对传统（普遍）意义的，对于opengl4.5+，现在有独立的sampler对象，负责存储采样规则。opengl也明确定义了如果纹理单元绑定了sampler对象，则使用sampler的采样参数。否则使用纹理对象自带的采样参数。
 
@@ -122,6 +115,8 @@ Sampler需要配合glsl的纹理访问函数使用。
 
 需要为Sampler配置前述的unit才可以访问这个unit上的texture。
 
+`void glBindTextureUnit(GLuint unit, GLuint texture)`
+
 【详见 glsl中的 Sampler】
 
 - **Images**
@@ -143,13 +138,6 @@ Sampler需要配合glsl的纹理访问函数使用。
 
 
 ## others
-
-### 关于filter
-
-- nearest最近邻选择距离采样点最近的texel
-- linear对采样点周围的4个texel插值
-
-生成mipmap（适用于MIN_FILTER）
 
 还有针对mipmap的插值方式。
 

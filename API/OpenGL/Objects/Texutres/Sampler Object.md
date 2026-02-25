@@ -1,3 +1,48 @@
+# Sampler Object
+
+一种openGL object,用于存储texture的采样参数。
+
+## usage
+
+` void glBindSampler(GLuint unit, GLuint sampler);`
+
+这里的unit只能是**texture image unit**，不能是image unit。
+
+因为一些环绕、mipmap等参数对shader中image变量没用，sampler object的参数只规定了sampler变量的行为方式/
+
+`glSamplerParameter(GLuint sampler, GLenum pname, T param);`
+
+## parameters
+
+### filtering
+
+`GL_TEXTURE_MAG_FILTER` **[放大/近/纹理分辨率低/一纹素多像素]**
+
+> minecraft中的方块
+
+- `GL_NEAREST`最近邻选择距离采样点最近的texel
+
+- `GL_LINEAR`对采样点周围的4个texel插值
+
+
+
+`GL_TEXTURE_MIN_FILTER` **[缩小/远/纹理分辨率高/一像素多纹素]**
+
+<img src="./assets/image-20260223131643289.png" alt="image-20260223131643289" style="zoom: 50%;" />
+
+
+
+纹理过小。使用mipmap。如果不使用，可能会出现闪烁或者摩尔纹。
+
+- `GL_LINEAR`
+- `GL_NEAREST`
+
+- `GL_NEAREST_MIPMAP_NEAREST`
+- `GL_LINEAR_MIPMAP_LINEAR`
+- ...
+
+mag filter和min filter在linear和nearest的方法完全是一样的，这两种模式和远近无关。区别就在于min filter可以选择mipmap
+
 ### 各项异性过滤
 
 为了解决不规则纹理，一个倾斜的地板，一个屏幕像素在左右方向可能只覆盖一个，但是在垂直方向上可能覆盖很多。
@@ -90,3 +135,4 @@ $ λ_{final}=λ_{calculated}+LOD_{bias} $
 `GL_TEXTURE_BORDER_COLOR` 
 
 四分量需要使用v。需要和纹理的image format保持一致。
+
