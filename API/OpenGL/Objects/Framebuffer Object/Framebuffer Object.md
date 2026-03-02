@@ -183,16 +183,22 @@ opengl的draw仍然是一个 framebuffer-based pipeline
 
 
 
-## Read buffer
+## Read color buffer
 
-只能是一个。
+从read color buffer获取（读取）数据的方式：
+
+- 下面的buffer read部分
+- blit
+- copy to texture
+
+read color buffer的数量只能是一个。
 
 - 对于FBO`glNamedFramebufferReadBuffer(fbo, GL_COLOR_ATTACHMENT2);`
 - 对于default`glReadBuffer(GL_BACK);` 通常不必手动设置
 
 
 
-framebuffer  `glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);` **此步骤必须绑定**
+framebuffer  `glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_or_0);` **此步骤必须绑定** for glReadPixels
 
 -> read buffer  `glNamedFramebufferReadBuffer(fbo, GL_COLOR_ATTACHMENT0);` or `glReadBuffer(GL_BACK);`
 
@@ -200,24 +206,7 @@ framebuffer  `glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);` **此步骤必须绑
 
 
 
-**读的方法：**
-
-- `void glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid * data)`
-
-读取到data或者PBO，通过format指定从哪里读
-
-比如`GL_DEPTH_COMPONENT` 从 depth buffer读。
-
- `GL_RGBA`从color buffer读 。
-
-- framebuffer bilts
-- copy from framebuffer to textures
-
-`glGetTextureImage`
-
-
-
-## Draw  buffers
+## Draw color buffers
 
 可以有多个。
 
@@ -266,9 +255,91 @@ layout(location=2) → material
 
 
 
+## buffer read
+
+`void glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid * data)`
+
+读取到data或者PBO，通过**format指定**从哪里读
+
+比如：
+
+`GL_DEPTH_COMPONENT`  从 depth buffer读。
+
+`GL_RGBA`从color buffer读 。
+
+`GL_DEPTH_STENCIL` depth buffer和stencil buffer都读。
+
+### read color clamp
+
+`void glClampColor(GL_CLAMP_READ_COLOR, clamp)`
+
+如果从中读color的话，可已使用这个函数进行限制：
+
+- GL_TRUE [0,1]
+- GL_FALSE OFF
+- GL_FIXED_ONLY normalized signed or unsigned will be clamped
+
+
+
+**注意**：color buffer和draw buffer都是color buffer，只针对于color attachment
+
+对于readpixel或者blit如果涉及到的是depth或者stencil attachment，是不会受到这两个buffer设置影响的。
+
 ## buffer clear
 
-## 
+> Images in a framebuffer may be cleared to a particular value.
+
+- 只有没被Mask的才会被clear更改
+- 未通过pixel ownership test的pixel会有未定义的值。
+- scissor test/
+- rasterize discard if discard，clear就会被忽略。
+
+`glClearNamedFramebuffer{iv|uiv|fv|fi}(framebuffer_or_0, buffer, drawbuffer, value)`
+
+depth一般用fv,depth+stencil用fi,
+
+- framebuffer是name
+
+- buffer是`GL_COLOR` `GL_DEPTH` `GL_DEPTH_STENCIL` or `GL_STENCIL`
+- drawbuffer是index，对于depth和stencil来说必须是0
+
+clear的是drawbuffer，对于default framebuffer需要提前`glDrawBuffer(GL_BACK)`指定
 
 
 
+## API使用
+
+`glBlitNamedFramebuffer`
+
+`glClearNamedFramebuffer`
+
+都可以传入default 0
+
+但是对**对象状态的操作**不可以使用
+
+**A) 设置/查询 draw/read buffer（FBO 版）**
+
+- `glNamedFramebufferDrawBuffers(fbo, ...)`
+- `glNamedFramebufferDrawBuffer(fbo, ...)`
+- `glNamedFramebufferReadBuffer(fbo, ...)`
+
+没有指定的attachment
+
+default framebuffer 要用：
+
+- `glDrawBuffer(GL_BACK/GL_FRONT/...)`
+- `glReadBuffer(GL_BACK/GL_FRONT/...)`
+
+**B) 挂附件（attachments）**
+
+- `glNamedFramebufferTexture`
+- `glNamedFramebufferRenderbuffer`
+- `glNamedFramebufferTextureLayer`
+- `glNamedFramebufferParameteri`
+
+同理，attachment由平台决定，已经固定无法更改。
+
+**C) 查询 FBO attachment 信息**
+
+- `glGetNamedFramebufferAttachmentParameteriv`
+- `glGetNamedFramebufferParameteriv`
