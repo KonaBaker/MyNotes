@@ -49,3 +49,14 @@ void main(IMaterial material) {
 vulkan+slang编译器会生成 descriptor set布局。
 
 而有了slang-rhi直接调用```shaderObject->setBinding("material", myWoodData)```就行了。
+
+| **中间语言** | **背后主推** | **对应高级语言** | **主要 API**    | **格式基础** |
+| ------------ | ------------ | ---------------- | --------------- | ------------ |
+| **SPIR-V**   | Khronos      | GLSL / HLSL      | Vulkan / OpenGL | 自定义二进制 |
+| **DXIL**     | Microsoft    | HLSL             | DirectX 12      | LLVM Bitcode |
+| **DXBC**     | Microsoft    | HLSL             | DirectX 9-11    | Token-based  |
+| **AIR**      | Apple        | MSL (Metal)      | Metal           | LLVM Bitcode |
+
+slang可以生成SPIR-V DXIL DXBC身可以编译为glsl/hlsl
+
+支持了泛型。

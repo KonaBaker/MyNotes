@@ -1,1 +1,2 @@
-📝 My own learning notes
+📝 My own learning note
+
