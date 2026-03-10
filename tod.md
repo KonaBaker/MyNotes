@@ -11,7 +11,7 @@
 
 今日：
 
-- mipmap
+- mipmap&shared memory
 - renderdoc mcp设置
 - CDLOD
 
