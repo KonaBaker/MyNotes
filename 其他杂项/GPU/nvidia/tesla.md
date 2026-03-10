@@ -20,12 +20,12 @@ https://zhuanlan.zhihu.com/p/403354366
 - Texture unit input:纹理坐标 output:经过filter的rgba
 - SM streaming multiprocessor 底层负责运算的部门。“单发射、按 warp 广播一条指令”的 SIMT 机器。
   - l cache指令cache 从SMC获得的指令（程序的一条条指令）缓存下来，分批执行。
-  - c cache常量cache& shared memory
+  - c cache 常量cache& shared memory
   - multi-threaded issue SM部门主管，拆分warp为一条条指令，**其对Warp的调度正是GPU并行能力的关键**
   - SP streaming processor，执行最基本的float标量运算，add/multiply/multiply-add以及整数运算
   - SFU special function unit 更为复杂的运算 指数、对数、三角函数、对片元属性做插值和透视校正(**!=透视除法在viewport/... TPC外部那个单元做的**)，
 
-![透视校正](./assets/v2-86bee5f2369df45b4e7f621a9f627d97_1440w.jpg)
+<img src="./assets/v2-86bee5f2369df45b4e7f621a9f627d97_1440w.jpg" alt="透视校正" style="zoom:67%;" />
 
 ### 流程
 
@@ -62,7 +62,7 @@ else
     a = d * e;
 ```
 
-硬件不能发射两条不同的指令流，对于不同的线程，可能会有不同的输入，也就是说不同的SP可能需要执行不同的分支，但是他们此时只能接收到同一条指令，那么不是当前指令的SP就会stall。不同分支的SP组会串行执行。
+硬件不能发射两条不同的指令流，对于不同的线程，可能会有不同的输入，也就是说不同的线程可能需要执行不同的分支，但是他们此时只能接收到同一条指令，那么不是当前指令的线程就会stall。不同分支的线程组会串行执行。
 
 - 编译器分支预测
 - warp voting
@@ -104,9 +104,45 @@ block包含多少线程是写死的，也是协作发生的组织单位(CTA， c
 
 
 
-线程组这里的概念就和compute shader里面的一样。
+线程组这里的概念就和compute shader里面的工作组类似。
 
 这些都是逻辑概念。
 
 真正的并行单位是warp，硬件执行单元是SM。
+
+所以就有了针对warp的优化：
+
+- 最好为每个block分配整数倍的warp线程数，这样warp的线程能被充分利用，而不是还有无效的线程。
+- 同一分支尽可能挤到同一warp里面
+- 如果某个内存读写依赖都由一个warp执行，那么无须同步，因为本身就是锁步运行。
+
+### 内存
+
+<img src="./assets/v2-b3501fecde229b3f4223f609d67bda03_r.jpg" alt="img" style="zoom: 67%;" />
+
+**global memory**就是SM外面的哪个DRAM，每一块显存都会有一个L2 cache。DRAM和L2 cache都是SM共用的。
+
+不同grid是串行的。
+
+**一个Warp中的连续线程访问连续的内存，可以被合并为一条内存读取指令**
+
+
+
+**shared memory**和L1 cache位于SM中，他们两个在之后的架构中占据相同的硬件单元，可以自由配置大小。
+
+共享内存肯定比主存和L2 cache快。
+
+对一个block内的所有线程可见。这意味着**一个block内所有线程必定位于同一个SM中**，所以一个block内线程数也是由限制的，因为一个SM容纳的warp也是有限的。
+
+
+
+**bank conflicts**【详细见./bank conflict】
+
+
+
+local memory/register files
+
+每一个线程都有自己运行所需的局部变量，存放在**寄存器文件**中，如果存不下会溢出到L1 cache中，如果还存不下会被一路驱逐出去，贬谪到L2甚至到主存中。（性能会受到毁灭性打击）
+
+最初的局部变量其他线程是无法访问的，但是较新的硬件支持了**Shuffle操作**，可以在一个Warp的线程间直接传递数据，比通过共享内存来回读写数据还快。
 
