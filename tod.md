@@ -4,10 +4,14 @@
 - mipmap
 - gpu架构 shared memory等等
 - tes/gs 
-- renderdoc阅读/MCP配置
+
+- MCP配置
+
 - c++内存管理全部内容
 
 今日：
 
 - mipmap
+- renderdoc mcp设置
+- CDLOD
 
