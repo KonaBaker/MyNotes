@@ -5,7 +5,7 @@ https://zhuanlan.zhihu.com/p/403354366
 - host interface:主入口，负责接收命令和gpu的上下文切换，接收数据存储到VRAM中
 - input assembler:组装顶点数据
 - work distribution:分发任务给下面的TPC
-- TPC：texture processing clusters = texture unit + SM * 2
+- TPC：texture processing clusters = texture unit + SM * 2 （之后的架构叫GPC）
 - viewport等等就是vertex post process的部分准备输出给fs
 - ROP raster operations processor: ”码头工人" 进行逐片元操作。各种test等
 - L2 cache Memory Controller DRAM:每个DRAM配一个MC一个L2和一个ROP。
@@ -142,7 +142,11 @@ block包含多少线程是写死的，也是协作发生的组织单位(CTA， c
 
 local memory/register files
 
-每一个线程都有自己运行所需的局部变量，存放在**寄存器文件**中，如果存不下会溢出到L1 cache中，如果还存不下会被一路驱逐出去，贬谪到L2甚至到主存中。（性能会受到毁灭性打击）
+每一个线程都有自己运行所需的局部变量，存放在register file中。在tesla v100中一个register file会有65536个(* xbit) registers
 
-最初的局部变量其他线程是无法访问的，但是较新的硬件支持了**Shuffle操作**，可以在一个Warp的线程间直接传递数据，比通过共享内存来回读写数据还快。
+如果存不下会溢出到L1 cache中，如果还存不下会被一路驱逐出去，贬谪到L2甚至到主存中。（性能会受到毁灭性打击）。如果没有溢出，但是这些变量很多，在warp切换的时候会切换大量的上下文。
+
+同时shader中也会需要寄存器，就会和warp context抢位置。shader中需要的寄存器越多，那么可用的warp就越少，可能造成内存读取延迟。
+
+最初的局部变量其他线程是无法访问的，后来register file在SM中共享，还有interconnect network,且较新的硬件支持了**Shuffle操作**，可以在一个Warp的线程间直接传递数据，比通过共享内存来回读写数据还快。
 
