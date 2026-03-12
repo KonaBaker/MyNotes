@@ -9,21 +9,7 @@
 
 slang的包里面包含了vulkan的sdk.
 
-RHI:
 
-```c++
-void RenderWater() {
-    #ifdef VULKAN
-        vkCmdDraw(...); // 写一大堆 Vulkan 代码
-    #elif defined(DX12)
-        commandList->DrawInstanced(...); // 写一大堆 DX12 代码
-    #endif
-}
-```
-
-类似这中就是RHI引擎逻辑和api调用的接口层。
-
-RHI会封装这些#if else。一般来说由引擎实现。
 
 
 
