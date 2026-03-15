@@ -281,7 +281,7 @@ layout(location=2) → material
 
 
 
-**注意**：color buffer和draw buffer都是color buffer，只针对于color attachment
+**注意**：read buffer和draw buffer都是color buffer，只针对于color attachment
 
 对于readpixel或者blit如果涉及到的是depth或者stencil attachment，是不会受到这两个buffer设置影响的。
 
