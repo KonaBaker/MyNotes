@@ -1,17 +1,15 @@
 本周任务：
 
 - CDLOD完全正确的实现
-- mipmap
-- gpu架构 shared memory等等
+- per-sample test
+- mipmap补全
 - tes/gs 
-
-- MCP配置
-
+- transform feedback
+- multisample
 - c++内存管理全部内容
+- renderdoc mcp
 
 今日：
 
-- mipmap&shared memory
-- renderdoc mcp设置
-- CDLOD
+- per-sample test
 
