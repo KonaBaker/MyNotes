@@ -56,21 +56,9 @@ fs接收一个fragment，输出一个fragment。
 in vec4 gl_FragCoord;
 in bool gl_FrontFacing;
 in vec2 gl_PointCoord;
-
-// for multisample
-in int gl_SampleID;
-in vec2 gl_SamplePosition;
-in int gl_SampleMaskIn[];
-
-in float gl_ClipDistance[];
-in int gl_PrimitiveID;
-
-// for geometry shader
-in int gl_Layer;
-in int gl_ViewportIndex;
 ```
 
-`gl_FragCoord`
+- `gl_FragCoord`
 
 表示片段在window-space中的位置，如果gl_FragDepth未在fs中写入，则这个window-space的z值会被写入到depth buffer中。
 
@@ -92,11 +80,72 @@ z值是通过`glDepthRange(n, f)`调整，范围是[n,f],一般为[0,1]
 
 `pixel_center_integer`按整数解释(0,0)不再是(0.5,0.5)
 
-`gl_FrontFacing`
+- `gl_FrontFacing`
 
 该片段由primitive的背面生成就是fasle，否则为true 
 
-`gl_Pointcoord`
+- `gl_Pointcoord`
+
+```c++
+// for multisample
+in int gl_SampleID;
+in vec2 gl_SamplePosition;
+in int gl_SampleMaskIn[];
+```
+
+- `gl_SampleMaskIn[]`
+
+每一个索引是一个32位的bitmask，length是ceil(s/32),s是支持的最大sample数。如果是4xMSAA
+
+那么`gl_SampleMaskIn[0] == 0b1011` bit0~3 = 1101
+
+> 例子：
+>
+> ```c++
+> #version 400 core
+> 
+> layout(location = 0) out vec4 outColor;
+> 
+> void main()
+> {
+>     int mask = gl_SampleMaskIn[0];
+> 
+>     int count = 0;
+>     for (int i = 0; i < 32; ++i)
+>     {
+>         if ((mask & (1 << i)) != 0)
+>             count++;
+>     }
+> 
+>     float intensity = count / 4.0;   // 假设当前是 4x MSAA
+>     outColor = vec4(intensity, intensity, intensity, 1.0);
+> }
+> ```
+>
+> 根据coverage调整亮度。最终效果，几何边缘会更暗。
+
+- `gl_SampleMask[]`
+
+`gl_SampleMask[0] = 0b0101` 会和input做AND运算 `1111 & 0101 = 0101`. 只能"关"，不能"开"。
+
+- `gl_SampleID`
+
+current sample。**使用会导致fs per-sample运行。**
+
+- `gl_SamplePosition`
+
+sample在pixel中的位置[0,1]，左下角原点。**使用会导致fs per-sample运行**
+
+```c++
+in float gl_ClipDistance[];
+in int gl_PrimitiveID;
+
+// for geometry shader
+in int gl_Layer;
+in int gl_ViewportIndex;
+```
+
+
 
 ## outputs
 
