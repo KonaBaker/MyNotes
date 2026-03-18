@@ -50,11 +50,11 @@ glsl中的`centroid`限定符限制只能在图元区域内进行插值。`centr
 
 ### Fixed sample location
 
-
+sample在pixel中的位置[0,1]，左下角原点。当我们使用gltexturestorage创建multisample texture/rbo时，可以将最后一个参数`fixedsamplelocations`设为`GL_TRUE`. 保证了每个fragment的sample的位置布局以及数量是相同的。很多实现为了减少某些走样，会让 sample 布局在图像中变化。
 
 ### resolve
 
-
+multisample FBO blit到 single-sample FBO
 
 ### per-sample shaing
 
@@ -69,4 +69,85 @@ MSAA -> SSAA
 
 这30%是哪30%由具体实现定义
 
-[tag]是否受fixed影响？
+---
+
+# usage
+
+需要使用`glEnable(GL_MULTISAMPLE)`（一般都默认开启） 并且 rendertarget是multisample的(FBO或者default)(一般无法是default,其由外部窗口创建，一般都是单采样)。
+
+```
+GLuint msaaFbo = 0;
+GLuint colorRbo = 0;
+GLuint depthStencilRbo = 0;
+
+int width = 1280;
+int height = 720;
+int samples = 4; 
+
+glCreateFramebuffers(1, &msaaFbo);
+
+glCreateRenderbuffers(1, &colorRbo);
+glNamedRenderbufferStorageMultisample(
+    colorRbo,
+    samples,
+    GL_RGBA8,
+    width,
+    height
+);
+
+glCreateRenderbuffers(1, &depthStencilRbo);
+glNamedRenderbufferStorageMultisample(
+    depthStencilRbo,
+    samples,
+    GL_DEPTH24_STENCIL8,
+    width,
+    height
+);
+
+glNamedFramebufferRenderbuffer(
+    msaaFbo,
+    GL_COLOR_ATTACHMENT0,
+    GL_RENDERBUFFER,
+    colorRbo
+);
+glNamedFramebufferRenderbuffer(
+    msaaFbo,
+    GL_DEPTH_STENCIL_ATTACHMENT,
+    GL_RENDERBUFFER,
+    depthStencilRbo
+);
+
+
+glBindFramebuffer(GL_FRAMEBUFFER, msaaFbo);
+glViewport(0, 0, width, height);
+
+// GL_MULTISAMPLE 默认就是开着的，但显式写也可以
+glEnable(GL_MULTISAMPLE);
+glEnable(GL_DEPTH_TEST);
+
+glClearColor(0.1f, 0.1f, 0.12f, 1.0f);
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+glUseProgram(program);
+glBindVertexArray(vao);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
+// 从 multisample FBO blit 到默认 framebuffer
+glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFbo);
+glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+glBlitFramebuffer(
+    0, 0, width, height,
+    0, 0, width, height,
+    GL_COLOR_BUFFER_BIT,
+    GL_NEAREST
+);
+
+// 然后交换窗口缓冲
+// glfwSwapBuffers(window);
+```
+
+**Q:如果开启了多重采样，color attachment是multisample的但是depth/stencil不是会发生什么？**
+
+A: framebuffer会验证附件完整性，这是不合规的。
