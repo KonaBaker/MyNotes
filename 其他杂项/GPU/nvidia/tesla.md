@@ -120,7 +120,9 @@ block包含多少线程是写死的，也是协作发生的组织单位(CTA， c
 
 <img src="./assets/v2-b3501fecde229b3f4223f609d67bda03_r.jpg" alt="img" style="zoom: 67%;" />
 
-**global memory**就是SM外面的哪个DRAM，每一块显存都会有一个L2 cache。DRAM和L2 cache都是SM共用的。
+- **global memory**
+
+就是SM外面的哪个DRAM，每一块显存都会有一个L2 cache。DRAM和L2 cache都是SM共用的。
 
 不同grid是串行的。
 
@@ -128,19 +130,21 @@ block包含多少线程是写死的，也是协作发生的组织单位(CTA， c
 
 
 
-**shared memory**和L1 cache位于SM中，他们两个在之后的架构中占据相同的硬件单元，可以自由配置大小。
+- **shared memory**和L1 cache
+
+位于SM中，他们两个在之后的架构中占据相同的硬件单元，可以自由配置大小。
+
+虽然可以自由配置，本质是相同的硬件单元，但是shared memory是**编程模型中显式可见的**，L1cache是**硬件缓存层次**。
 
 共享内存肯定比主存和L2 cache快。
 
 对一个block内的所有线程可见。这意味着**一个block内所有线程必定位于同一个SM中**，所以一个block内线程数也是由限制的，因为一个SM容纳的warp也是有限的。
 
-
-
-**bank conflicts**【详细见./bank conflict】
+shared memory **同一block/workgroup内可见**
 
 
 
-local memory/register files
+- **local memory/register files**
 
 每一个线程都有自己运行所需的局部变量，存放在register file中。在tesla v100中一个register file会有65536个(* xbit) registers
 
@@ -150,3 +154,43 @@ local memory/register files
 
 最初的局部变量其他线程是无法访问的，后来register file在SM中共享，还有interconnect network,且较新的硬件支持了**Shuffle操作**，可以在一个Warp的线程间直接传递数据，比通过共享内存来回读写数据还快。
 
+shuffle本质上是**同一个subgroup/warp**内的lane之间直接交换register里面的值。不需要shared memory 那样写入写出。不能跨warp。
+
+
+
+- **bank conflicts**【详细见./bank conflict】
+
+
+
+- **limitations**
+
+自Ampere架构之后，基本上都是128 CUDA cores per SM。warp size 为 32
+
+gpu occupancy：
+
+> It is defined as the ratio of the number of active [warps](https://docs.modular.com/glossary/gpu/warp/) to the maximum number of warps that can be active on a given [streaming multiprocessor](https://docs.modular.com/glossary/gpu/streaming-multiprocessor/) (SM) at any one time
+
+$$
+occupancy=\frac{warps_{active}}{max\_warps_{acttive}}
+$$
+
+ $max\_warps_{acttive}$是这个SM最多能挂多少 warp 在上面等待/执行/切换。不是128/32 = 4。
+
+$warps_{active}$是因资源限制或者种种原因这个SM实际挂了多少个warp。
+
+更多的resident warps可以去延迟隐藏
+
+限制：
+
+- 每个线程的寄存器使用量
+- 每个block shared memory 使用量
+- block上限
+- warps上限
+
+---
+
+块应该尽量小，让SM填满更多的warps。
+
+提高gpu occupancy。
+
+对于Barrier，涉及的同步域越多，越容易阻塞。

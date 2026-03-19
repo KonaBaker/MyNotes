@@ -10,14 +10,14 @@
 
 定义单个**工作组**内的invocation数量。
 
-**work_group**
+**work_group**/block
 
-工作组。是gpu调度的基本单位
+工作组。是gpu调度的基本单位。会在同一个SM上执行。
 
 同一个工作组内的invocation可以
 
-- 共享本地内存
-- 使用barrier
+- 共享内存 shared memory
+- 使用barrier（block-scope)
 - 通过```gl_LocalInvocationID```访问组内位置
 
 **global_size**

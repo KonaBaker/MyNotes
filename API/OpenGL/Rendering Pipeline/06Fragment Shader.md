@@ -36,7 +36,7 @@ fs接收一个fragment，输出一个fragment。
 
 ## special operations
 
-1. 硬件通常以 **2x2 fragment quad** 为单位执行 fragment shader。fs会自动生成window-space导数dFdx\dFdy，记录uv变化了多少，可以使用大多数纹理函数。再其他stage一般无法使用texture这种可以自动推断的函数，需要使用textureLod texelFetch这种显式的。
+1. 硬件通常以 **2x2 fragment quad** 为单位执行 fragment shader。fs会自动生成window-space导数dFdx\dFdy，记录uv变化了多少，可以使用大多数纹理函数。在其他stage一般无法使用texture这种可以自动推断的函数，需要使用textureLod texelFetch这种显式的。
 
 2. discard，使用后会抛弃这个片段的输出值(color\depth\stencil及后续定义的output)，不会进入后续的管线阶段。
 
