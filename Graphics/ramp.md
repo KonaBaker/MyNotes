@@ -1,4 +1,6 @@
-ramp texture渐变纹理。
+# ramp texture
+
+渐变纹理。
 
 一般作为lut(look up table)，一张查找表，简化代码复杂度，性能上直接查表比复杂数学计算更快。
 
