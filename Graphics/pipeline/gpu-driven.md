@@ -6,13 +6,13 @@ https://zhuanlan.zhihu.com/p/7345604081
 
 
 
-<img src="./assets/v2-9a454154f41a09f06f2478a3ef0987dc_1440w.jpg" alt="img" style="zoom:50%;" />
+<img src="../assets/v2-9a454154f41a09f06f2478a3ef0987dc_1440w.jpg" alt="img" style="zoom:50%;" />
 
-<img src="./assets/v2-5c7bb26199326df58d2dcda106b498c2_1440w.jpg" alt="img" style="zoom:50%;" />
+<img src="../assets/v2-5c7bb26199326df58d2dcda106b498c2_1440w.jpg" alt="img" style="zoom:50%;" />
 
 - Instance Culling
 
-  <img src="./assets/100044282-75468-1.jpg" style="zoom:50%;" />
+  <img src="../assets/100044282-75468-1.jpg" style="zoom:50%;" />
 
 - Mesh Cluster Rendering
 
