@@ -15,12 +15,3 @@
 - 一级一barrier，
 
 - 访寸消耗/缓存局部性差。用不上shuffle或者shared memory，可能用上L2cache。
-
-## opengl
-
-每一层是上一层downsample + filter得到的，选一种卷积核。`glGenerateMipmap`并不要求具体实现，所以更深入的讨论应该找具体的驱动。
-
-
-
-## vulkan
-

@@ -28,7 +28,7 @@ $ bank=(\frac{address}{word\_size})\mod count $
 
 $ offset = (\frac{address}{word\_size}) / count $
 
-这里的word_size就是只连续多长的数据映射到一个bank上，也就是交叉编址的stride(和后面的stride不是一个)。
+这里的word_size就是指连续多长的数据映射到一个bank上，也就是交叉编址的stride(和后面的stride不是一个)。
 
 **典型案例：**
 
