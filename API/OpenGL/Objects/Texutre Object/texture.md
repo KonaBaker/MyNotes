@@ -38,7 +38,7 @@ texture有很多不同的**类型** 详细见 https://wikis.khronos.org/opengl/T
 - mipmap生成 可以整除
 - 内存对齐/寻址
 
-**Mipmaps** [缩小/远/纹理大/一像素多纹素]
+**Mipmaps** [纹理缩小/远/一像素多纹素]
 
 主要应对的就是屏幕像素和纹素的匹配问题：
 
