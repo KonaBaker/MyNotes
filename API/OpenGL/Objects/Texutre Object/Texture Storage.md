@@ -181,3 +181,12 @@ sampler type是`gsamplerbuffer`
 **本质是访问大型数据数组的一种方式。**
 
 例子：骨骼动画矩阵存储，存储的东西UBO装不下，但是又不复杂，结构简单（用不着SSBO）。
+
+## Texture Layout
+
+![img](./assets/v2-f8efd3969fdf665b38cd69a267be0bd2_1440w.jpg)
+
+```c++
+uint_32 x = 
+```
+
