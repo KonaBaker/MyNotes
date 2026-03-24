@@ -13,3 +13,30 @@
 - 在析构函数中执行销毁操作。
 - 在使用的时候声明一个该对象的类。
 
+```c++
+class Instance {
+private:
+    VkInstance handle = VK_NULL_HANDLE;
+
+public:
+    Instance(std::nullptr_t) {
+        handle = VK_NULL_HANDLE;
+    }
+
+    Instance(Context const& ctx, CreateInfo const& info) {
+        vkCreateInstance(..., &handle);
+    }
+
+    ~Instance() {
+        if (handle != VK_NULL_HANDLE) {
+            vkDestroyInstance(handle, ...);
+        }
+    }
+
+    VkInstance get() const { return handle; }
+};
+```
+
+例如vkInstance像这样被封装起来管理生命周期。
+
+栈对象，自动析构，类智能指针风格（可以later赋值，生命周期管理。
