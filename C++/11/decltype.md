@@ -26,7 +26,7 @@ decltype(i) a; // 推导结果为int
 struct A { double x; };
 const A* a;
 decltype(a->x) y;       // double
-decltype((a->x)) z = y; // const double&
+decltype((a->x)) z = y; // const double& 指针是const类型
 ```
 
 2)如果参数是其他类型的表达式T
