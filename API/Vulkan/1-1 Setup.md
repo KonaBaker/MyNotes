@@ -89,4 +89,59 @@ auto physicalDevices = instance.enumeratePhysicalDevices()； // 获取显卡列
 
 这些都是在phtsical device上操作。
 
-logical device & queues
+## logical device & queues
+
+### 指定info
+
+创建logical device同样需要createinfo,在其中指定一些结构体，这些结构体中又包含一系列info。
+
+1) `vk::DeviceQueueCreateInfo` 指定要创建的队列
+
+- `queueFamilyIndex` 需要的队列族的index，比如graphics
+- `queueCount` 需要的queue的数量
+- `pQueuePriorities` 优先级(影响command buffer调度)
+
+2) `vk::StrcutureChain` 来指定需要的一些额外功能。
+
+vulkan向后兼容，默认只能使用vulkan 1.0中的基本功能，如果要使用额外功能，需要**显式**启用。
+
+```c++
+// Create a chain of feature structures
+vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
+    {},                               // vk::PhysicalDeviceFeatures2 (empty for now)
+    {.dynamicRendering = true },      // Enable dynamic rendering from Vulkan 1.3
+    {.extendedDynamicState = true }   // Enable extended dynamic state from the extension
+};
+```
+
+structureChain是一个辅助模板，连接三个不同功能结构体。{}内对每个结构初始化。
+
+传入只需要传入第一个结构体的指针就可以了。
+
+3) 指定设备扩展requiredDeviceExtension（上面验证是否支持扩展的时候使用过）
+
+以上综合整个指定过程，其实就是**复刻**了一遍上面的**适用性检查**。上面检查物理设备是否支持，下面逻辑设备就要显式指定这些feature。
+
+### create
+
+```c++
+vk::DeviceCreateInfo deviceCreateInfo{
+    .pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
+    .queueCreateInfoCount = 1,
+    .pQueueCreateInfos = &deviceQueueCreateInfo,
+    .enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtension.size()),
+    .ppEnabledExtensionNames = requiredDeviceExtension.data()
+};
+device = vk::raii::Device( physicalDevice, deviceCreateInfo );
+```
+
+和instance中指定的区别是，这些extension及一些设置是这个**设备特定**的。
+
+### queue handles
+
+我们需要一个handle来和与device一同创建的queue进行交互。
+
+```c++
+vk::raii::Queue graphicsQueue = vk::raii::Queue( device, graphicsIndex, 0 );
+```
+
