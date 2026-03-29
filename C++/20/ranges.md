@@ -10,9 +10,13 @@ std::ranges
 
 `find` / `find_if` / `find_if_not` 是“查找型”算法，返回迭代器。`find_if` 会找第一个让满足条件的的元素。
 
-`find_first_of` 是“在一组候选值里找第一个匹配项”，也就是在一个范围中找“是否出现过第二个范围里的任意元素”。
+- `std::ranges::find(range, value);`
 
-在上述容器传递给lambda的过程中，传递的是projection,引用。但lambda决定是引用传递还是值传递。**存疑**
+- `std::ranges::find_if(range, [](auto const& elem) { return /* 条件 */; });`
+
+两种按值查找和按条件查找
+
+`find_first_of` 是“在一组候选值里找第一个匹配项”，也就是在一个范围中找“是否出现过第二个范围里的任意元素”。
 
 ```c++
 [](auto x) { ... }
@@ -38,4 +42,8 @@ ranges 写法：
 std::ranges::any_of(v, pred);
 ```
 
-可读性通常更好。
+**pros**:
+
+- 书写便捷，提升可读性。
+- 惰性求值的views管道
+- projection减少lambda样板
