@@ -51,7 +51,7 @@ physicalDevice.getSurfaceSupportKHR(qfpIndex, *surface)
 
 vulkan没有default framebuffer。需要一个infrastructure来own buffers让我们渲染到这里，然后再呈现到屏幕上。这个infrastructure就是swap chain。
 
-**本质是一个等待呈现到屏幕的图像队列，目的是和皮哦那光幕的刷新率同步**
+**本质是一个等待呈现到屏幕的图像队列，目的是和显示器的刷新率同步**
 
 application从swap chain中拿，画好了再返回去。
 
