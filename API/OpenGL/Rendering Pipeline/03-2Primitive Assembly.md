@@ -1,10 +1,10 @@
 # primitive assembly
 
-该阶段是在vertex post processing进行的（clip之前）。
+该阶段的**文档编排**是在vertex post processing中，后续clip和viewport之前。
 
-将顶点流组装成图元。
+但实际上是图元组装->clip->viewport后续才是face culling \raster discar以及scissor test等等。
 
-图元被divided into 一系列独立的base primitive，经过一些简单处理后，被送到光栅化器进行渲染。
+将顶点流组装成图元。图元被divided into 一系列独立的base primitive，经过一些简单处理后，被送到光栅化器进行渲染。
 
 **概念**
 
