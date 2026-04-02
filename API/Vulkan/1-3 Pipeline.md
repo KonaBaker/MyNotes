@@ -291,3 +291,62 @@ vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
 pipelineLayout = vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 ```
 
+## render passes/dynamic rendering
+
+在之前，我们需要通过render pass objec告诉vulkan我们将要用哪个 framebuffer attachments。现在，有了dynamic rendering，我们可以直接在创建graphics pipeline和记录command buffer的时候指定这些信息。直接指定attachments.
+
+要使用动态渲染，需要：
+
+```c++
+vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{ 
+    .colorAttachmentCount = 1, 
+    .pColorAttachmentFormats = &swapChainImageFormat 
+};
+```
+
+需要将该结构包含在graphics pipeline的createinfo中，同时也包括上面创建的一大堆createinfo
+
+```c++
+vk::GraphicsPipelineCreateInfo pipelineInfo{ .pNext = &pipelineRenderingCreateInfo,
+    .stageCount = 2, .pStages = shaderStages,
+    .pVertexInputState = &vertexInputInfo, .pInputAssemblyState = &inputAssembly,
+    .pViewportState = &viewportState, .pRasterizationState = &rasterizer,
+    .pMultisampleState = &multisampling, .pColorBlendState = &colorBlending,
+    .pDynamicState = &dynamicState, .layout = pipelineLayout, .renderPass = nullptr 
+};
+```
+
+render pass这里设置为nullptr，因为我们使用的dymamic rendering
+
+dynamic pros:
+
+- 它通过消除对render pass和FBO的需求，简化了渲染流程.
+- 提供了更大的灵活性，允许我们在不创建新的render pass object的情况下，更改正在渲染的attachment。
+
+
+
+## conclusion
+
+一个graphics pipeline需要拥有以下信息：
+
+- shader stages
+- fixed-function
+- pipeline layout: for uniform & push values
+- dynamic rendering: 指定attachment**的格式**
+
+对于pipeline info还有两个可选项：
+
+```C++
+pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+pipelineInfo.basePipelineIndex = -1; // Optional
+```
+
+用来派生现有pipeline创建新的pipeline
+
+**创建**
+
+```c++
+graphicsPipeline = vk::raii::Pipeline(device, nullptr, pipelineInfo);
+```
+
+中间的nullptr就是`VkPipelineCache`pipeline缓存，可以存储到文件来实现复用，加快管线创建速度
