@@ -291,7 +291,7 @@ vk::raii::Fence     drawFence                = nullptr; // 确保一次只渲染
 ```c++
 void drawFrame()
 {
-    auto fenceResult = device.waitForFences(*drawFence, vk::True, UINT64_MAX); // (drawFence的数组, isAnyOrAll, maxWaitTime);
+    auto fenceResult = device.waitForFences(*drawFence, vk::True, UINT64_MAX); // (drawFence_array, isAnyOrAll, maxWaitTime);
     if (fenceResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to wait for fence!");
@@ -300,11 +300,15 @@ void drawFrame()
 }
 ```
 
+为了公用的semaphores以及cmdbuffer可以在这一帧使用。
+
 ### 从 swapchain获取image
 
 ```C++
-auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr); //(time, semaphore, fence);
+auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr); //(time, semaphore_to_be_signaled, fence_to_be_signaled);
 ```
+
+之前帧present占用的image和当前获取image之间的同步是swapchain自带的，presentation engine会自行查询哪个image空闲、繁忙。如果占用，就会阻塞。
 
 ### 记录cmd buffer
 
@@ -351,5 +355,20 @@ device.waitIdle();
 
 关闭窗口后等待队列中的操作完成。
 
-## frames in flight 并行帧
+## frames in flight 
 
+“frame in flight"是指已经被cpu提交给gpu，但是gpu还没有渲染完的帧”。
+
+我们现在必须等待前一帧的完成，才能开始渲染下一帧。我们可以上cpu提前准备，不同帧并行运行，这就需要让所有在渲染中被访问和修改**的资源**都有副本（因为多个帧都要用）。所以我们需要更多的cmd buffers\semaphores\fences。
+
+```c++
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+```
+
+通常情况下设置为两帧就足够了。如果数值过大，可能增加gpu负载，cpu跑得过快，CPU 在 GPU 还在渲染第 1 帧的时候，就已经准备好了第 2、3、4 帧的命令。这样会增加帧延迟。
+
+**Notes**
+
+提前准备确实会增加**吞吐量（每秒帧数）**，即cpu和gpu一直在算，流水线处于满载状态，FPS肯定是高的。但是会增加**帧延迟**，也就是说cpu在准备每一帧的时候会读取用户/玩家的输入，然后基于这个输入计算游戏状态。如果只使用1frame in flight，帧渲染完成之前，cpu就会等着，不会读入输入。准备开始渲染这一帧的时候再读入，那么你输入和你看到画面的之间的延迟就是帧渲染的时间。如果使用过大的frame in flight，那么你输入和你看到画面之间的延迟，可能已经隔了好几帧了。**“操作手感更加黏滞”**
+
+我们需要把semaphore\fences\cmdbuffer全部用`std::vector`存储。
