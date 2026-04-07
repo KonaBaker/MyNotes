@@ -1,4 +1,4 @@
-# move&forward&value
+# move&forward
 
 参考链接：https://zhuanlan.zhihu.com/p/335994370
 
@@ -27,7 +27,7 @@ lvalue和xvalue 是描述对象或者函数位置的表达式。
 - 亡值数组的访问。
 - `a.x` a是右值且x非引用、非静态
 
-## 临时量实质化
+## materialization
 
 **notes：**
 
@@ -84,17 +84,17 @@ auto&& result = std::move(s);
 
 上面这句话其实表达不准确，因为值类型判断的是表达式，而不是某个类型（右值引用）。
 
+## std::move
 
+### 左值&右值（引用）
 
-**左值&右值**（引用）
+**判断标准**
 
-表达式结束之后是否依然存在。持久/临时。在内存中是否占有确定位置。
+表达式结束之后是否依然存在。持久/临时。在内存中是否占有确定位置。也可以通过是否能取地址进行判断。（c++标准中规定，`&`的操作数必须是一个左值，虽然xvalue有内存，但是你无法通过取址运算符简单获取，所以这句话是**正确的**）
 
-也可以通过是否能取地址进行判断。（c++标准中规定，`&`的操作数必须是一个左值，虽然xvalue有内存，但是你无法通过取址运算符简单获取，所以这句话是**正确的**）
+**一些基础规则**
 
-
-
-左值引用不可以指向右值，但const左值引用可以。
+- 左值引用不可以指向右值，但const左值引用可以。
 
 ```const int &ref_a = 5;```
 
@@ -102,16 +102,20 @@ auto&& result = std::move(s);
 
 保证了可以```vec.push_back(5)```
 
-
-
-右值引用不能指向左值。可以修改右值。
+- 右值引用不能指向左值。可以修改右值。
 
 ```
 int &&ref_a_right = 5;
 ref_a_right = 6;
 ```
 
-右值引用如何指向左值？可以使用std::move.
+右值引用如何指向左值？可以使用
+
+`std::move`
+
+可以将一个左值转换成右值，从而可以调用右值引用的移动构造函数。
+
+> 从语义来说，是移动，接管资源，变为空。
 
 ```
 int a = 5;
@@ -119,18 +123,14 @@ int &ref_a = a;
 int &&ref_a_right = std::move(a);
 ```
 
-关键！：
+**右值引用动机：**
 
-**作为函数形参时，右值引用更灵活。虽然const左值引用也可以做到左右值都接受，但它无法修改，有一定局限性。**
+1) 作为函数形参时，右值引用更灵活。虽然const左值引用也可以做到左右值都接受，但它无法修改，有一定局限性。
+2) 可以配合`std::forward`以及引用折叠，实现完美转发。
+3) 配合移动构造函数实现移动语义
 
-**std::move**
-
-可以将一个左值转换成右值，从而可以调用右值引用的拷贝构造函数。
-
-> 从语义来说，是移动，接管资源，变为空。
-
-**移动构造函数**
-当拷贝构造函数由于要使用深拷贝，所以即使使用了左值引用避免传参的时候进行了拷贝，但是函数内部还是要拷贝的。
+### 移动构造函数
+拷贝构造函数由于要使用深拷贝，所以即使使用了左值引用避免传参的时候进行了拷贝，但是函数内部还是要拷贝的。
 
 移动构造函数，把被拷贝者的数据移动过来，被拷贝者就不要了，这样避免了深拷贝。
 
@@ -144,30 +144,59 @@ int &&ref_a_right = std::move(a);
 
 在overload resolution中xvalue被视为rvalue优先匹配移动构造函数或移动赋值操作符，而lvalue会匹配拷贝。
 
-**std::move并未实现任何移动语义**
+**Notes：**
 
-**注意**
+std::move并未实现任何移动语义，对于基本内置类型，如int等，没有构造函数，没有移动语义，所以使用与否，emplace还是push没有任何区别。
 
-对于基本内置类型，如int等，没有构造函数，没有移动语义，所以使用与否，emplace还是push没有任何区别。
+**默认移动构造函数**
 
+编译器会自动生成 `Bigdata(Bigdata&&)` **当且仅当**满足所有以下条件：
 
+1. 没有用户声明的**拷贝构造函数**
+2. 没有用户声明的**拷贝赋值运算符**
+3. 没有用户声明的**移动赋值运算符**
+4. 没有用户声明的**析构函数**
+5. 所有非静态成员和基类都是**可移动构造的**
 
----
+这就是著名的 **"Rule of Five"** 背后的机制。
 
+```c++
+Bigdata(Bigdata&& other) noexcept(/* 看成员 */)
+    : a(std::move(other.a)),    // int 的 move 退化为拷贝
+      b(std::move(other.b)),    // string 的移动构造，偷指针
+      c(std::move(other.c))     // vector 的移动构造，偷指针
+{}
+```
 
+可以显式default来确保存在move语义的构造函数
 
-#### 待补充或完善待消化待吸收：
+```c++
+struct Bigdata {
+    int a;
+    std::string b;
+    std::vector<int> c;
 
-**std::forward**
+    Bigdata(int a, std::string b, std::vector<int> c)
+        : a(a), b(std::move(b)), c(std::move(c)) {}
 
-和std::move一样本身也是类型转换。其更加强大，move只能转出右值，但是forward都可以。主要用于模板编程的参数转发中。
+    Bigdata(Bigdata&&) noexcept = default;
+    Bigdata& operator=(Bigdata&&) noexcept = default;
+    Bigdata(const Bigdata&) = default;
+    Bigdata& operator=(const Bigdata&) = default;
+    ~Bigdata() = default;
+};
+```
 
-```std::forward<T>(u)```
+**关于noexcept**
 
-- 当T为左值引用类型时，u将被转换为T类型的左值
-- 否则u将会被转换为T类型的一个右值
+在vector进行扩容的时候(push_back和emplace_back触发reallocation)，大小不够的时候会把就元素搬到新分配的一块内存。此时
 
+- 如果元素的移动构造函数是 **`noexcept`** 的 → 用**移动**
+- 否则用**拷贝**（为了保证强异常安全：万一 move 中途抛异常，旧数据还在）
 
+隐式生成的移动构造函数是否 `noexcept`，取决于所有成员的 move 是否都 `noexcept`。`std::string` 和 `std::vector` 的 move 都是 `noexcept` 的，所以 `Bigdata` 的隐式 move 也会是 `noexcept`
+
+### assign
 
 xvalue **可以**出现在赋值号左边（LHS），前提是该对象的赋值运算符没有被“引用限定符（ref-qualifier）”禁止。
 
@@ -193,3 +222,24 @@ struct SafeS {
 // std::move(SafeS()) = 10; // <--- 只有这时才编译错误
 ```
 
+
+
+## std::forward
+
+和std::move一样本身也是类型转换。其更加强大，move只能转出右值，但是forward都可以。主要用于模板编程的参数转发中。
+
+```std::forward<T>(u)```
+
+```c++
+template <typename T>
+constexpr T&& forward(typename std::remove_reference<T>::type& u)
+{
+    return static_cast<T&&>(u);
+}
+
+template <typename T>
+constexpr T&& forward(typename std::remove_reference<T>::type&& u)
+{
+    return static_cast<T&&>(u);
+}
+```

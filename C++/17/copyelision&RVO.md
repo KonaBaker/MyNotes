@@ -238,11 +238,183 @@ destructed at 0x7fffd635fd4e
 
 ## push_back&emplace_back
 
-对于push_back和emplace_back
+对于push_back和emplace_back的区别先介绍完美转发的概念。
 
-```emplace_back(move(x))```和```push_back(move(x))```没有区别，都会调用移动构造函数。
+### 完美转发
 
-真正区别如下：
+参考链接：
+
+- https://zhuanlan.zhihu.com/p/369203981
+- https://zhuanlan.zhihu.com/p/260508149
+
+完美转发 = 引用折叠 + 万能引用(T &&) + std::forward。先介绍一些概念。
+
+**引用折叠与右值引用参数**
+
+```c++
+template <typename T> void f(T&&);
+```
+
+对于这样的一个模板函数，如果有`int i;`那么我们可能会认为`f(i)`这样的调用是不合法的，因为右值引用不能接左值。但是c++规定了两个例外规则。
+
+1) 影响右值引用参数的推断如何进行。当将一个左值传递给一个右值引用（T的）的函数参数，**且该右值引用是一个模板类型参数时**，编译器会推断模板类型参数为实参的左值引用类型。例如: `i`就推断为`int&`, 如果有一个`const int`类型的实参就推断为`const int&`.
+
+2) 引用折叠。**只应用于间接创建引用的引用，如类型别名或者模板参数**。这里的折叠**不是**模板推导的T,**而是**T&&这个参数进行折叠。
+
+   - `X& &` `X& &&` `X&& &` 都折叠为 `X&`
+   - `X&& &&`折叠成 `x&&` 
+
+   例如：`int& ci` `f(ci)`就会折叠为`int&`
+
+上述两个规则组合在一起，就意味着我们可以在模板中对一个左值调用`f`。这也就意味这在模板成员函数中的参数`Args &&`是一个**万能引用**既可以接受左值，又可以接受右值。
+
+**推断举例**
+
+**1. `int i = 1; f(i);`**
+
+`i` 是左值，T 推断为 `int&`。
+
+引用折叠：`int& &&` → `int&`，所以参数类型为 `int&`。
+
+**2. `int& refi = i; f(refi);`**
+
+`refi` 也是左值（具名引用就是左值），T 推断为 `int&`。
+
+参数类型同样折叠为 `int&`。
+
+**3. `int&& rrefi = std::move(i); f(rrefi);`**
+
+关键点：虽然 `rrefi` 的类型是 `int&&`，但 **`rrefi` 本身作为表达式是左值**（有名字的右值引用是左值）。
+
+因此 T 推断为 `int&`，参数类型为 `int&`。
+
+**4. `f(42);`**
+
+`42` 是纯右值（prvalue），T 推断为 `int`（非引用类型）。
+
+参数类型为 `int&&`。
+
+**std::forward**
+
+详见【C++11/move&forward】
+
+**动机**：
+
+此时对于某一种函数我们想实现一种功能即为，传入左值在函数内部就调用左值函数，传入右值在函数内部就调用右值函数。例如下面的`testForward`
+
+```c++
+template<typename T>
+void print(T & t){
+    std::cout << "Lvalue ref" << std::endl;
+}
+
+template<typename T>
+void print(T && t){
+    std::cout << "Rvalue ref" << std::endl;
+}
+
+template<typename T>
+void testForward(T && v){
+    print(v);
+    print(std::forward<T>(v));
+    print(std::move(v));
+
+    std::cout << "======================" << std::endl;
+}
+
+int main(int argc, char * argv[])
+{
+    int x = 1;
+    testForward(x);
+    testForward(std::move(x));
+}
+```
+
+```c++
+Lvalue ref
+Lvalue ref
+Rvalue ref
+======================
+Lvalue ref
+Rvalue ref
+Rvalue ref
+======================
+```
+
+对于传入的`v`这个表达式本身是个左值，所以使用其本身或者`std::move`并不能实现目的。
+
+根据例外规则一，对于`testForward`的参数这样一个万能引用，在接收一个左值实参时，T类型都会推断为一个左值引用，接收一个右值实参的时候， `T`类型就是其本身类型。然后函数参数再根据例外规则二，进行引用折叠。这时`testForward`的实例化就完成了。
+
+此时再将其传入`std::forward`，
+
+```c++
+// 左值调用下面这个函数，T的类型是param的左值引用，引用折叠完以后，返回的也是左值引用。相当于是对param做了一个强制转换成左值引用。
+template <typename T>
+constexpr T&& forward(typename std::remove_reference<T>::type& param)
+{
+    return static_cast<T&&>(param);
+}
+
+// 对于右值调用下面这个函数，T的类型就是param本身，相当于强制转换成右值引用。
+template <typename T>
+constexpr T&& forward(typename std::remove_reference<T>::type&& param)
+{
+    return static_cast<T&&>(param);
+}
+```
+
+经过`forward`的转换过后，就可以完美匹配`print`的左值右值版本了。
+
+整个这样一个流程就实现了**完美转发**。
+
+**push_back与emplace_back**
+
+回过头来再看push_back和emplace_back。
+
+- `push_back`是有两个重载函数的：
+
+  ```c++
+  void push_back( const T& value );
+  void push_back( T&& value );
+  ```
+
+  他是这样根据参数左右值不同来匹配不同函数。
+
+- `emplace_back` 使用的是万能引用
+
+  ```c++
+  template< class... Args >
+  reference emplace_back( Args&&... args );
+  ```
+
+因为emplace_back即可以接受左值，又可以接受右值，所以转调用其他函数(比如构造函数)时，要进行完美转发。
+
+appends a new element to the end of the container.这个element是通过placement new/`std::allocator_traits::construct`的方式创建的。其中每个args都进行了完美转发`std::forward<Args>(args)`。这个construct在c++20以后不叫placement new了，最终调用
+
+```c++
+a.construct(p, std::forward<Args>(args)...)
+```
+
+p是指向为初始化storage的指针。
+
+```c++
+template <class T, class... Args>
+constexpr T* construct_at(T* p, Args&&... args) {
+    return ::new (voidify(p)) T(std::forward<Args>(args)...);
+    //                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //                          仍然是圆括号直接初始化
+}
+```
+
+本质还是调用new。
+
+在c++20以后引入了圆括号的聚合初始化，也就是说上述代码中的`T(std::forward<Args>(args)...);`可以不被当作构造函数，而是初始化。我们在c++20以后完全不用写复制或者移动构造函数。
+
+---
+
+**临时对象**
+
+所以对于emplace_back和push_back的优势差别就在临时对象的appends。
 
 ```c++
 // 写法 A: 产生临时对象 -> 移动构造到vector -> 析构临时对象
@@ -252,7 +424,63 @@ vec.push_back(BigData(1, 3.14));  //一次构造，一次移动构造
 vec.emplace_back(1, 3.14); // 0次移动，0次复制 ，只有一次构造
 ```
 
+对于写法A: BigData(1, 3.14)为什么还会有临时对象产生，而没有copy elision? 其实是有的，它的实质化最后阶段就是参数接收的阶段`T&& value`，这个右值引用本身就是左值，有内存，有地址，这里就要实质化了。而copy elision的存在与否决定的是，先产生临时对象再传参（因为参数本身就是右值引用，所以没有开销），还是直接在参数处产生临时对象。
 
+对于写法B: 这**不是**copy elision**,而是**完美转发+placement new/construct。只是emplace_back允许了一种新方式。他的传递过程都是args参数，没到最后时刻，都没有设计构造/新对象产生。
 
+**左值**
 
+```c++
+T obj();
+v.push_back(obj);
+v.emplace_back(obj);
+```
+
+`push_back`会匹配`void push_back( const T& value );`并在内部调用拷贝构造函数，进行append。
+
+`emplace_back`根据引用折叠以及完美转发规则，最后forward出来的是`T&`类型，同样调用拷贝构造函数，进行append。
+
+所以二者没有区别。
+
+**右值**
+
+```c++
+T obj();
+v.push_back(std::move(obj));
+v.emplace_back(std::move(obj));
+```
+
+`push_back`会匹配`void push_back( T&& value );`并在内部调用移动构造函数，进行append。
+
+`emplace_back`根据之前讲的规则，最后forward出来的是`T&&`类型，同样调用移动构造函数，进行append。
+
+所以二者没有区别。
+
+**Notes**: 上述说的构造/移动 等等都是针对这个object整体，这个object本身，对于其内部成员是如何初始化的，要具体看成员表达式的值类型。例如：
+
+```c++
+struct Bigdata {
+    int a;
+    std::string b;
+    std::vector<int> c;
+};
+
+v.emplace_back(1, std::string("..."), std::vector<int>{1,2,3});
+```
+
+0次移动，0次复制，直接在对应位置进行构造。
+
+单就成员来看,`std::string`以及`std::vector`都被转发为右值引用类型，在聚合初始化的时候，会移动到对应成员。
+
+```c++
+std::string s = "...";
+std::vector<int> vi = {1,2,3};
+v.emplace_back(1, s, vi);   // s 和 vi 是左值
+```
+
+0次移动，0次复制，直接在对应位置进行构造。
+
+单就成员来看，s,vi被转发为左值引用类型。这两个成员的初始化都变成了拷贝构造。
+
+**emplace_back的零拷贝优势，完全依赖于实参是右值（临时对象以及其内部成员的临时性）**
 
