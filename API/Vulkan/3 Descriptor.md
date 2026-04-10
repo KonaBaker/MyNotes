@@ -2,6 +2,8 @@
 
 我们现在可以为每个顶点传递任意的attribute，但是我们如何传递一个全局的变量呢？比如matrix这种全局且可能每帧变换。
 
+> 是 GPU 资源（纹理、缓冲区、采样器等）的"打包容器"，告诉着色器去哪里读取数据。你可以把它理解为一组"资源绑定槽"的集合。
+
 **resource descriptors**能帮助我们解决这个问题，一个descriptor可以让shader自由的访问像buffers和images这样的资源。descriptor的使用方法包括以下三个部分：
 
 - 在pipeline创建的时候指定descriptor set layout
@@ -79,9 +81,11 @@ vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1, .pBindings = &ub
 vk::raii::DescriptorSetLayout descriptorSetLayout = vk::raii::DescriptorSetLayout(device, layoutInfo);
 ```
 
+如果一个set有多个binding，我们先创建然后聚合到`std::array`中即可，传入数组指针。
 
 
-在pipeline创建的过程中，我们需要指定descriptor layout来告诉shader使用哪些descriptor.
+
+在pipeline创建的过程中，我们需要指定descriptor layout来告诉shader使用哪些descriptor.这个结构我们在之前创建过
 
 ```c++
 vk::PipelineLayoutCreateInfo pipelineLayoutInfo{ .setLayoutCount = 1, .pSetLayouts = &*descriptorSetLayout, .pushConstantRangeCount = 0 };
@@ -184,6 +188,8 @@ vk::DescriptorPoolCreateInfo poolInfo{ .flags = vk::DescriptorPoolCreateFlagBits
 
 maxset指定的是有多少个descriptor sets
 
+同样的一个pool可以有多个pool szie，pool用`std::array`组织就可以了。
+
 ```
 descriptorPool = vk::raii::DescriptorPool(device, poolInfo);
 ```
@@ -215,7 +221,7 @@ descriptorSets.clear();
 descriptorSets = device.allocateDescriptorSets(allocInfo);
 ```
 
-现在我们要为每个descriptor set指定buffer
+现在我们要为每个descriptor指定buffer
 
 ```c++
 for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -237,6 +243,8 @@ for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     device.updateDescriptorSets(descriptorWrite, nullptr);
 }
 ```
+
+
 
 **RAII 对象管理生命周期,需要传给 C API 风格字段时,用 `*` 拿出原始句柄**。
 
@@ -279,7 +287,37 @@ DescriptorSet
 └── binding 2 (SSBO) ──> particleBuffer    (粒子数据)
 ```
 
+一个descriptor需要一个bufferInfo来描述数据从哪里来。
 
+一个WriteDescriptorSet对应一个binding。一个WriteDescriptorSet可能有多个bufferInfo(因为一个binding可能因为数组而含有多个descriptor)
+
+**例子**
+
+```c++
+DescriptorSetLayout (布局定义)
+│
+├── binding 0  (descriptorCount = 1)
+├── binding 1  (descriptorCount = 1)
+└── binding 2  (descriptorCount = 3)  ← 数组 binding
+
+         ↕ 对应
+
+WriteDescriptorSet 数组
+│
+├── WriteDescriptorSet { dstBinding=0, descriptorCount=1, pBufferInfo → [bufferInfo_A] }
+├── WriteDescriptorSet { dstBinding=1, descriptorCount=1, pBufferInfo → [bufferInfo_B] }
+└── WriteDescriptorSet { dstBinding=2, descriptorCount=3, pBufferInfo → [bufferInfo_C0, bufferInfo_C1, bufferInfo_C2] }
+                                                                          ↑ 连续数组，对应 binding 内的 [0] [1] [2]
+```
+
+bufferInfo + WriteDescriptorSet 连接上了实际的资源位置，即buffer。
+
+DescriptorSetLayout 描述了布局，即有哪几个binding，descriptor都是什么类型，用在哪个shader stage。
+
+- 给allocate用，用于在Cpp端接下来分配buffer
+- 给pipeline layout用，用于告诉shader端布局。
+
+最后就是在draw call的时候把pipeline layout和descriptorsets拿来调用bind。
 
 ## use
 
@@ -302,4 +340,80 @@ commandBuffers[frameIndex].drawIndexed(indices.size(), 1, 0, 0, 0);
 
 **把"资源是什么"和"资源怎么被 shader 访问"分开**。
 
-<img src="./assets/image-20260410014108366.png" alt="image-20260410014108366" style="zoom:50%;" />
+
+
+## Alignment requirements
+
+C++ struct和shader内的uniform的匹配需要满足对齐要求。
+
+- 标量类型，对齐N(= 4 bytes given 32-bit floats)
+- float2是 2N
+- float3/4 是 4N
+- 嵌套结构，按照Base alignment向上取16的倍数
+- float4x4和float4的对齐一样。
+
+```c++
+struct UniformBufferObject {
+    glm::vec2 foo;
+    alignas(16) glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
+struct UniformBuffer {
+    float2 foo;
+    float4x4 model;
+    float4x4 view;
+    float4x4 proj;
+};
+ConstantBuffer<UniformBuffer> ubo;
+```
+
+对于这个例子，foo只有8bytes大小，需要使用alignas对齐到16.
+
+我们也可以在glm头文件前定义
+
+```c++
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+```
+
+来强制对齐：
+
+```c++
+struct Foo {
+    glm::vec2 v;
+};
+
+struct UniformBufferObject {
+    Foo f1;
+    alignas(16) Foo f2;
+};
+struct Foo {
+    vec2 v;
+};
+
+struct UniformBuffer {
+    Foo f1;
+    Foo f2;
+};
+ConstantBuffer<UniformBuffer> ubo;
+```
+
+但是这个嵌套结构就失效了，需要手动定义
+
+## multiple descriptor sets
+
+通常我们可以同时绑定多个描述符集，每个集合有自己的**编号（set index）**，例如：
+
+| Set 编号 | 用途                                                  |
+| -------- | ----------------------------------------------------- |
+| Set 0    | 全局共享资源（摄像机、光照等） 绑定一次               |
+| Set 1    | 每个材质的资源（纹理、材质参数） 换材质的时候重新绑定 |
+| Set 2    | 每个物体的资源（模型矩阵等） 每次物体绑定             |
+
+```c++
+[[vk::binding(0, 0)]] ConstantBuffer<GlobalUBO> globalData;  // set=0
+[[vk::binding(0, 1)]] ConstantBuffer<ObjectUBO> objectData;  // set=1
+```
+
+这样根据绑定频次，将不同的资源分配到不同的set中，减少同步以及绑定开销。
