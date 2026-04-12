@@ -156,7 +156,7 @@ DescriptorSet[1]  ──指向──>  uniformBuffers[1]  (第 1 帧用)
 
 两个 descriptor set **共用同一个 layout**(形状一样),但里面填的 buffer 不同。
 
-**Notes**
+**<font color = ligblue> Notes: </font>**
 
 **1. `VkDescriptorSetLayout`—— 模板/蓝图**
 
@@ -276,7 +276,7 @@ for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
                   └────────────────────┘
 ```
 
-**Notes**
+**<font color = ligblue> Notes: </font>**
 
 一个 set 里有多个 binding,每个 binding 包含一个或多个 descriptor。一个 buffer 可以被多个 descriptor 共享,一个descriptor指向某个buffer的某个范围。
 
