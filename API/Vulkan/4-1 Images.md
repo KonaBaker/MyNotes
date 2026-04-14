@@ -177,7 +177,7 @@ commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, {}, nullptr, ba
 
 **有Idle，为什么还要barrier?**
 
-1) waitIdle只能同步工作全部跑完，但是能保证内存可见性
+1) waitIdle只能同步工作全部跑完，但是不能保证内存可见性
 2) barrier不止是同步，整个layout transition本身都是它做的。
 
 ## copy buffer to image
