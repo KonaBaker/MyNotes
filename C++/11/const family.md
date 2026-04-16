@@ -40,6 +40,21 @@ constexpr只修饰对象本身。隐含const语义。
 
 ```constexpr int* p``` 修饰的是”指针p“这个对象。= ```int* const p```
 
+例如在声明一个文件路径的时候
+
+```c++
+const char* MODEL_PATH  = "../models/viking_room.obj"; //ok
+constexpr char* MODEL_PATH  = "../models/viking_room.obj"; //no
+```
+
+针对这种情况更推荐使用的是string或者string_view
+
+```
+constexpr std::string_view MODEL_PATH   = "../models/viking_room.obj";
+```
+
+
+
 ## consteval（C++20）
 
 只能参与函数的声明。
