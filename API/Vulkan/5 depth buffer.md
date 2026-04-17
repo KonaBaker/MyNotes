@@ -58,6 +58,8 @@ vk::RenderingInfo renderingInfo = {
     .pDepthAttachment     = &depthAttachmentInfo};
 ```
 
+除了上面dynamic rendering在渲染的时候指定相关attachment，dynamic rendering还有很重要的一点，是让pipeline在创建的时候知道，你使用了这个部分的dynamic rendering。后续声明depth stencil state的同时，还需要声明format。
+
 ### transition
 
 例如我们之前对colorattachment做的那样
@@ -81,7 +83,7 @@ transitionImageLayoutSwapChain(
 
 ## depth and stencil state
 
-attachment有了，我们现在需要启用depth test。
+attachment有了，我们现在需要启用depth test。让pipeline知道state以及format
 
 在pipeline中声明depth和stencil的createInfo
 
@@ -109,6 +111,37 @@ vk::PipelineDepthStencilStateCreateInfo depthStencil{
 
 创建完以后我们需要在pipeline的相关state中指定这个信息。
 
+```c++
+vk::PipelineRenderingCreateInfo renderingInfo = {
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &swapChainSurfaceFormat.format,
+            .depthAttachmentFormat = depthFormat,
+        };
+```
+
+还需要指定format，表明启用depth的dynamic rendering。
+
+就类似于viewportstate
+
+```c++
+vk::PipelineViewportStateCreateInfo      viewportState{.viewportCount = 1, .scissorCount = 1};
+```
+
+需要在Pipeline中指定count，再到渲染的时候指定具体的内容。
+
 ## window resize
 
 同时我们需要在window size大小变换的时候，重建depth attachment
+
+
+
+**Notes**
+
+对于并行帧：
+
+并行的是cpu，gpu每一帧仍然是串行进行。
+
+- uniform buffer cpu每帧写入，gpu每帧需要读，是需要多份的。
+- texture image cpu上传一次以后，只读，只需要一份，为每个帧都绑定到descriptor即可
+- color attachment 从swapchain获得，gpu每帧需要写入，并且后续present会占用，present和写入会有冲突，所以这里是从swap chain获得不同的image。
+- depth cpu不写入，gpu写入，gpu会保持单队列。
