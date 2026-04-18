@@ -193,8 +193,6 @@ void createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
 
 **其他调用处先用 `e1` 顶住**（后续会替换部分）：
 
-cpp
-
 ```cpp
 // 贴图图像：因为贴图本身不做 MSAA，保持 e1
 createImage(texWidth, texHeight, mipLevels,
@@ -203,8 +201,6 @@ createImage(texWidth, texHeight, mipLevels,
 ```
 
 ### 4.3 添加 `createColorResources`
-
-cpp
 
 ```cpp
 void createColorResources() {
@@ -226,23 +222,10 @@ void createColorResources() {
 }
 ```
 
-**🔥 三个关键字段一定要理解：**
+- **Transient** 告诉驱动是否对其分配实际的物理内存。
+- **dontcare** 告诉驱动是否写回。
 
-| 字段         | 值                                        | 为什么                                                       |
-| ------------ | ----------------------------------------- | ------------------------------------------------------------ |
-| `mipLevels`  | 只能是 **1**                              | Vulkan 规范强制：**多重采样图像禁止 mipmap**。因为 mipmap 是下采样链，和 MSAA 逻辑冲突。 |
-| `numSamples` | `msaaSamples`                             | 告诉驱动每像素存多少个样本。                                 |
-| `usage`      | `eTransientAttachment | eColorAttachment` | 见下方详解 ↓                                                 |
 
-#### 为什么有 `eTransientAttachment`？
-
-这个 flag 表示："这个图像 **只作为附件使用，内容不会跨 render pass/rendering 保留**"。
-
-- GPU（尤其是移动端 tile-based GPU）看到这个标志，可以 **只在片上 tile 内存里保留** 多重采样数据，不写回到显存
-- resolve 完成后立即丢弃多重采样内容
-- **节省大量带宽**（多重采样图像很大，4x MSAA 就是普通图像的 4 倍）
-
-这也是为什么颜色缓冲只需要 1 个 mipLevel —— 它是临时的中间产物，用完即弃。
 
 ------
 
@@ -342,68 +325,14 @@ vk::PipelineMultisampleStateCreateInfo multisampling{
 
 教程正文用旧 Render Pass 方式讲解，但示例代码用的是动态渲染。我们对齐示例代码。
 
-### 8.1 旧 Render Pass 方式（仅作了解）
-
-cpp
-
-```cpp
-// 传统写法——示例代码里没用这个，贴出来给你对照
-VkAttachmentDescription colorAttachmentResolve{
-    /* 采样数 */    = VK_SAMPLE_COUNT_1_BIT,   // 单采样，作为 resolve 目标
-    /* finalLayout */ = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    // ...
-};
-VkAttachmentReference   colorAttachmentResolveRef{2, ...};
-subpass.pResolveAttachments = &colorAttachmentResolveRef;
-```
-
-**核心思想**：render pass 里声明三个 attachment —— 多重采样颜色、深度、resolve 目标（swapchain 图像）。subpass 通过 `pResolveAttachments` 让 GPU 在 subpass 结束时自动做 resolve。
-
-### 8.2 动态渲染方式（官方示例代码实际用的）
+### 8.2 dynamic rendering
 
 cpp
 
 ```cpp
 void recordCommandBuffer(uint32_t imageIndex) {
-    auto& commandBuffer = commandBuffers[frameIndex];
-    commandBuffer.begin({});
-
-    // ① 将 swapchain image 转换到 ColorAttachmentOptimal
-    transition_image_layout(
-        swapChainImages[imageIndex],
-        vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        {},
-        vk::AccessFlagBits2::eColorAttachmentWrite,
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::ImageAspectFlagBits::eColor);
-
-    // ② 将 多重采样 colorImage 转换到 ColorAttachmentOptimal
-    transition_image_layout(
-        *colorImage,
-        vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::AccessFlagBits2::eColorAttachmentWrite,
-        vk::AccessFlagBits2::eColorAttachmentWrite,
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::ImageAspectFlagBits::eColor);
-
-    // ③ 将深度图像转换到 DepthAttachmentOptimal
-    transition_image_layout(
-        *depthImage,
-        vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eDepthAttachmentOptimal,
-        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
-        vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
-        vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
-        vk::ImageAspectFlagBits::eDepth);
-
-    // ④ 构造颜色附件 —— 关键：同时指定渲染目标 + resolve 目标
+   // ...
     vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-    vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
     vk::RenderingAttachmentInfo colorAttachment = {
         .imageView          = colorImageView,                              // ★ 多重采样图像
@@ -415,39 +344,7 @@ void recordCommandBuffer(uint32_t imageIndex) {
         .storeOp            = vk::AttachmentStoreOp::eStore,
         .clearValue         = clearColor
     };
-
-    vk::RenderingAttachmentInfo depthAttachment = {
-        .imageView   = depthImageView,
-        .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-        .loadOp      = vk::AttachmentLoadOp::eClear,
-        .storeOp     = vk::AttachmentStoreOp::eDontCare,    // ← 深度不保留
-        .clearValue  = clearDepth
-    };
-
-    vk::RenderingInfo renderingInfo = {
-        .renderArea           = {.offset = {0, 0}, .extent = swapChainExtent},
-        .layerCount           = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments    = &colorAttachment,
-        .pDepthAttachment     = &depthAttachment
-    };
-
-    commandBuffer.beginRendering(renderingInfo);
-    // ...绑定管线、绘制...
-    commandBuffer.endRendering();
-
-    // ⑤ 将 swapchain image 转换到 PresentSrcKHR
-    transition_image_layout(
-        swapChainImages[imageIndex],
-        vk::ImageLayout::eColorAttachmentOptimal,
-        vk::ImageLayout::ePresentSrcKHR,
-        vk::AccessFlagBits2::eColorAttachmentWrite,
-        {},
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        vk::PipelineStageFlagBits2::eBottomOfPipe,
-        vk::ImageAspectFlagBits::eColor);
-
-    commandBuffer.end();
+    //...
 }
 ```
 
@@ -481,7 +378,7 @@ void recordCommandBuffer(uint32_t imageIndex) {
 
 ------
 
-## 9. 进阶：Sample Shading（可选增强）
+## 9. Sample Shading
 
 ### 9.1 MSAA 解决不了什么
 
@@ -538,7 +435,7 @@ vk::PipelineMultisampleStateCreateInfo multisampling{
 
 ------
 
-## 10. 一张图总结所有资源关系
+## 10. 关系
 
 ```
                                    ┌────────────────────────────┐
@@ -571,7 +468,7 @@ vk::PipelineMultisampleStateCreateInfo multisampling{
 
 ------
 
-## 11. 易错点清单（收藏版）
+## 11. Notes
 
 | #    | 坑                                                           | 解释                                                         |
 | ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -588,46 +485,89 @@ vk::PipelineMultisampleStateCreateInfo multisampling{
 
 ------
 
-## 12. 和旧 Render Pass 写法的对照表（供阅读旧代码时参考）
+## 12. some question
 
-| 概念                 | 旧 Render Pass 写法                                    | 动态渲染写法（本教程）                                      |
-| -------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
-| 声明多重采样颜色附件 | `VkAttachmentDescription` + `samples=Nx`               | 直接用 `RenderingAttachmentInfo.imageView` 指向多重采样图像 |
-| 声明 resolve 目标    | 第三个 `VkAttachmentDescription`（samples=1）          | `RenderingAttachmentInfo.resolveImageView`                  |
-| 声明 resolve 动作    | `subpass.pResolveAttachments = &resolveRef`            | `RenderingAttachmentInfo.resolveMode = eAverage`            |
-| 最终 layout 转换     | `VkAttachmentDescription.finalLayout = ePresentSrcKHR` | 自己在 `endRendering` 后加 `pipelineBarrier2`               |
-| 同步                 | `VkSubpassDependency.srcAccessMask` 更新               | `ImageMemoryBarrier2` 的 `srcAccessMask`                    |
+### 关于Per-sample和per-pixel
 
-------
+**earlyz?**
 
-## 13. 运行效果
+深度测试以及颜色写入都是per-sample的，这也是为什么color/depth attachment都需要有多个采样点。而fs的执行是per-pixel的。无论是否earlyz，这个都是可以正常运行的。earlyz与否影响的只是，某个sample是提前被剔除还是写入颜色后再进行剔除。
 
-编译运行后，你应该能看到边缘明显变平滑（相比没开 MSAA 前）。最明显的地方：
+**color**
 
-- 模型轮廓线
-- 远处高对比度的锯齿边
-- 贴图 UV 边界
+FS运行一次输出这个fragment的颜色值，这个执行的per-pixel(per-fragment）的，但是在写入color attachment的时候，会根据coverage mask，将这个fragment的值写入自己覆盖的所有sample.
 
-**如果看起来一样**，99% 是下面某个问题：
+这个coverage的计算行为和opengl是一致的，
 
-- 验证层没开，静默失败中
-- `msaaSamples` 其实是 `e1`（没成功查到最大值）
-- 管线的 `rasterizationSamples` 忘记改了
+例子：
 
-打开验证层跑一次，几乎所有配置错误都会被告知。
+设 4x MSAA。考虑一个像素，它刚好被两个三角形瓜分：
 
-------
+- 三角形 A（红色）覆盖了 sample 0, 1
+- 三角形 B（蓝色）覆盖了 sample 2, 3
 
-## 14. 结语
+```
+像素 4 个采样点的布局：
+        ┌─────────┐
+        │ s0   s1 │   ← A 覆盖了 s0, s1
+        │         │
+        │ s2   s3 │   ← B 覆盖了 s2, s3
+        └─────────┘
+```
 
-到这一章为止，你已经实现了一个功能完整的 Vulkan 程序：实例、设备、交换链、管线、顶点/索引/Uniform 缓冲、贴图、mipmap、深度、MSAA。所有 Vulkan 的基础概念都齐了。
+**绘制 A**：
 
-下一步可以探索：
+- 光栅化：coverage mask = `1100`（bit 0, 1 亮）
+- FS 运行 1 次，输出 `red`
+- 颜色写入 mask 里的 sample：
+  - sample 0 ← red
+  - sample 1 ← red
+  - sample 2、3 保持不动（还是清屏的背景色）
 
-- **Push Constants** —— 比 uniform buffer 更轻量的少量常量传递
-- **Instanced Rendering** —— 一次绘制大量相同物体
-- **Compute Shader** —— 计算着色器（教程下一章）
-- **Multiple Subpasses / Multiple Render Targets (MRT)**
-- **Pipeline Cache** —— 加速启动
+**绘制 B**：
 
-加油！
+- 光栅化：coverage mask = `0011`（bit 2, 3 亮）
+- FS 运行 1 次，输出 `blue`
+- 颜色写入：
+  - sample 2 ← blue
+  - sample 3 ← blue
+  - sample 0、1 **不动**（还是 red）
+
+**Resolve**：`(red + red + blue + blue) / 4 = 紫红色`
+
+✅ 边缘像素正确地呈现了 50% red + 50% blue。
+
+### Resolve
+
+给定一个 multisampled 像素有 N 个 sample（颜色 $$c_0, c_1, ..., c_{N-1} $$），resolve 产出单个颜色 $$c_{out} $$：
+
+- **eAverage**（最常用）：$$c_{out} = \frac{1}{N} \sum_{i=0}^{N-1} c_i $$
+- **eSampleZero**：$$c_{out} = c_0 $$（最快，质量最差）
+- **eMin**：$$ c_{out} = \min_i(c_i) $$（常用于深度缓冲）
+- **eMax**：$$c_{out} = \max_i(c_i) $$（常用于深度缓冲）
+
+**桌面gpu**
+
+VRAM中读并且写回：
+
+带宽成本（4x MSAA）：
+
+- 写入 MS buffer：4× 普通带宽
+- ROP(render output unit)从Resolve 读取：4× 普通带宽
+- Resolve 写入：1× 普通带宽
+
+合计：9× 单采样带宽（vs 没开 MSAA 的 1×）
+
+**ROP(render output unit)**
+
+专门负责msaa sample写入/resolve/depth test/color blending的单元。不占用shader core的计算资源。
+
+**移动gpu**
+
+使用TBR，带宽不够。
+
+在tile memory（基本上为移动gpu特有）上做计算最后然后写回VRAM。
+
+也就是说MS color buffer在tile memory里面，resolve发生在最后写回的过程中。
+
+4xMSAA在移动在移动端成本很低，一般都会开。
