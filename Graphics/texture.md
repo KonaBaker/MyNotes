@@ -13,11 +13,19 @@
 
 ### texture array
 
-相同尺寸、相同格式的纹理层。GPU原生支持。
+相同尺寸、相同格式的纹理层，例如texture2DArray本质是多张独立2D slices的堆叠，layer间是不插值的。GPU原生支持。每一layer都可以单独更新。layer层数也是有限制的。
 
-每一layer都可以单独更新。
+### texture3D
 
-layer层数也是有限制的。
+三个轴都支持三线性插值，一般用于体积雾以及SDF。
+
+glsl中是sampler3D/vec3(u, v, w)/vulkan image type 3D
+
+### cubemap
+
+主要用于环境贴图/IBL等。
+
+glsl中是samplerCube/vec3(direction)
 
 ---
 
