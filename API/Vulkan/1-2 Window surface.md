@@ -140,7 +140,10 @@ swap chain extent要求的是像素坐标，而不是屏幕坐标，否则对于
 - imageUsage 何种操作？比如colorattachment。
 - imageSharingMode 在多个queue families中使用swap chain
   - `vk::SharingMode::eExclusive` 一个image一次只能被一个queue family拥有，需要显式的所有权转移
-  - `vk::SharingMode::eConcurrent ` 可以共享，无需显式的所有权转移
+  - `vk::SharingMode::eConcurrent ` 可以共享，无需显式的所有权转移。性能是不如独占的。
+- queuefamilyindices 配合imagesharingmode使用
+  - 在concurrent的情况下，这一项会指定哪些队列族会访问它。
+
 - preTransform 对图形应用某种变换，如水平翻转。
 - compositeAlpha 是否使用alpha和其他窗口（window system中的）进行混合（eOpaque忽略）
 - clipped 裁剪窗口遮挡
