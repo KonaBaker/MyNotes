@@ -2,7 +2,24 @@
 
 ## constexpr
 
-常量表达式，可以作用在变量和函数上。
+常量表达式，可以作用在变量和函数上。原则上不会有额外存储，两种情况例外：
+
+- ODR-used 使用reference/pointer
+
+```c++
+constexpr int kMax = 100;
+
+// 只是读值 → 编译器内联，无存储
+if (x < kMax) { ... }
+
+// 取地址 → 编译器必须给它一个实际地址，产生存储
+const int* p = &kMax;   // ODR-used!
+foo(kMax);              // 若 foo 接受 const int&，也是 ODR-used!
+```
+
+- 编译器优化不足
+
+### usage
 
 - 一个 constexpr **变量**是一个**编译时**完全确定的常数。**必须**完成常量初始化。
 
