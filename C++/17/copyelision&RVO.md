@@ -350,7 +350,7 @@ Rvalue ref
 ```c++
 // 左值调用下面这个函数，T的类型是param的左值引用，引用折叠完以后，返回的也是左值引用。相当于是对param做了一个强制转换成左值引用。
 template <typename T>
-constexpr T&& forward(typename std::remove_reference<T>::type& param)
+constexpr T&& forward(typename std::remove_reference<T>::type& param) // 这里先去掉引用再加上&,是为了规避折叠，让参数始终是左值引用
 {
     return static_cast<T&&>(param);
 }
@@ -363,7 +363,7 @@ constexpr T&& forward(typename std::remove_reference<T>::type&& param)
 }
 ```
 
-经过`forward`的转换过后，就可以完美匹配`print`的左值右值版本了。
+经过`forward`的转换过后，就可以完美匹配`print`的左值右值版本了。**引用折叠并不局限于某一个位置，凡是模板替换后产生“引用的引用”的地方都会触发**
 
 整个这样一个流程就实现了**完美转发**。
 
