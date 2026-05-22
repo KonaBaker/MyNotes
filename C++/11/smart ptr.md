@@ -159,5 +159,64 @@ delete pci;
 
 ### shared_ptr和new结合使用
 
+如果不初始化一个智能指针，就会被初始化为一个空指针。除此之外，还可以使用new返回的指针来初始化智能指针。
+
+```c++
+std::shared_ptr<T> p(q); // q是指向new分配的内存，且能够转换为T*类型。
+std::shared_ptr<T> p(u); // u是unique_ptr,接管资源并置为空。
+std::shared_ptr<t> p(q, d); // 额外指定了删除器。
+std::shared_ptr<T> p(p2, d); // p2为智能指针（非上面的内置指针），额外指定了删除器。
+
+// reset释放对象之后，（如果有）再指向新的内置指针。
+p.reset();
+p.reset(q);
+p.reset(q, d);
+```
+
+接受指针参数的构造函数都是explicit的，无法进行隐式转换，必须使用直接初始化的方式：
+
+```c++
+std::shared_ptr<int> p1 = new int(1024); // x
+std::shared_ptr<int> p2(new int(1024));
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
