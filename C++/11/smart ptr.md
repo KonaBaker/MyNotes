@@ -157,9 +157,9 @@ const int *pci = new const int(1024);
 delete pci;
 ```
 
-### shared_ptr和new结合使用
+## shared_ptr和new结合使用
 
-如果不初始化一个智能指针，就会被初始化为一个空指针。除此之外，还可以使用new返回的指针来初始化智能指针。
+如果不初始化一个智能指针，就会被初始化为一个空指针。除此之外，还可以**使用new返回的指针**来初始化智能指针。**这个内置指针只能指向动态内存，因为智能指针默认使用delete释放它所关联的对象。
 
 ```c++
 std::shared_ptr<T> p(q); // q是指向new分配的内存，且能够转换为T*类型。
@@ -167,7 +167,7 @@ std::shared_ptr<T> p(u); // u是unique_ptr,接管资源并置为空。
 std::shared_ptr<t> p(q, d); // 额外指定了删除器。
 std::shared_ptr<T> p(p2, d); // p2为智能指针（非上面的内置指针），额外指定了删除器。
 
-// reset释放对象之后，（如果有）再指向新的内置指针。
+// reset释放对象之后，（如果有）再指向新的内置指针。不可以直接等号赋值
 p.reset();
 p.reset(q);
 p.reset(q, d);
@@ -180,9 +180,105 @@ std::shared_ptr<int> p1 = new int(1024); // x
 std::shared_ptr<int> p2(new int(1024));
 ```
 
+同样对于explicit的规则，我们不能在返回值的时候直接返回内置指针，需要显式构造一个智能指针。
 
+### Notes
 
+**不要混合使用普通指针和智能指针**
 
+在使用shared_ptr的时候，推荐使用make_shared而不是new，避免无意中将同一块内存绑定到多个独立创建的shared_ptr上。（引用计数不会增长）
+
+```C++
+Foo* foo = new Foo();
+std::shared_ptr<Foo> sp1(foo);
+assert(sp1.use_count() == 1);
+std::shared_ptr<Foo> sp2(foo);
+assert(sp2.use_count() == 1);
+assert(sp1.use_count() == 1);
+```
+
+当将一个shared_ptr绑定到一个内置指针的时候，就意味着所有权的转移，这个时候就不应该再继续使用内置指针访问这块内存。
+
+**不要使用get初始化另一个智能指针或者对其进行赋值**
+
+明确.get()是用于向不能使用智能指针的代码传递一个内置类型。其不能被delete也不能用于绑定到其他智能指针。
+
+同样的，使用get内置类型指针绑定到多个独立创建的shared_ptr上仍然不会增加引用计数。这样可能会导致内存被错误的提前释放，产生ub。
+
+## unique_ptr
+
+unique拥有它所指向的对象：
+
+### usage
+
+定义一个unique_ptr的时候，需要将其绑定到一个new返回的指针上。初始化必须采用**直接初始化**。
+
+且禁止从另一个unique_ptr进行拷贝和赋值。
+
+```c++
+std::unique_ptr<int> p2(new int(42));
+```
+
+```c++
+std::unique_ptr<T> u1;
+std::unique_ptr<T, D> u2;
+std::unique_ptr<T, D> u(d); // d是D类型的删除器
+
+u = nullptr; // 释放u指向的对象，并置空。
+
+u.release(); // 放弃u对指针的控制权。同时返回指针，将u置空,返回值通常被用来初始化另一个智能指针或者给另一智能指针赋值
+u.reset(); // 释放u指向的对象。
+u.reset(q); // 重新指向内置指针q
+u.reset(nullptr);
+```
+
+**copy&assign**
+
+```c++
+std::unique_ptr<int> p(new int(42));
+std::unique_ptr<int> p2;
+p2.reset(p.release());
+
+// 可以进行移动拷贝(可以拷贝或赋值一个将要销毁的unique_ptr)
+unique_ptr<int> p1 = make_unique<int>(42);
+unique_ptr<int> p2;
+p2 = std::move(p1);
+
+// NRVO优化。无须std::move
+unique_ptr<int> createInt() {
+    auto p = make_unique<int>(42);
+    return p;
+}
+```
+
+**release不会释放对象**
+
+```C++
+p2.release(); // 不会释放内存，而且丢失了指针
+auto nativeP = p2.release() // v
+```
+
+**注意**：这里移动的是unique_ptr本身，并不是其包含的对象，移动是指针。
+
+## weak_ptr
+
+不控制所指向对象生存期的智能指针，指向一个由shared_ptr进行管理的对象。不增加引用计数，指向对象仍然可以释放，**弱共享**。
+
+适用于**一切应该不具有对象所有权，又想安全访问对象的情况。**
+
+```C++
+std::weak_ptr<T> w;
+std::weak_ptr<T> w(sp);
+w = p;
+w.reset();
+w.use_count();
+w.expired(); // use_count为0,返回true,否则返回false
+w.lock(); // expired为true,返回一个空的shared_ptr,否则返回一个指向w的对象的shared_ptr
+```
+
+由于对象可能不存在，我们不能使用weak_ptr直接访问对象，必须调用lock。同时lock还是一个原子操作。
+
+## 动态数组
 
 
 
