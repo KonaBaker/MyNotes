@@ -232,6 +232,13 @@ u.reset(q); // 重新指向内置指针q
 u.reset(nullptr);
 ```
 
+reset的执行顺序是先构造临时shared_ptr(分配控制块)，然后进行swap，然后利用临时变量的析构进行释放：
+
+```c++
+std::share_ptr<T> tmp(q);
+p.swap(tmp);
+```
+
 **copy&assign**
 
 ```c++
