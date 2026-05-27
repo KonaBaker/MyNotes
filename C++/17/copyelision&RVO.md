@@ -365,17 +365,19 @@ Rvalue ref
 此时再将其传入`std::forward`，
 
 ```c++
-// 左值调用下面这个函数，T的类型是param的左值引用，引用折叠完以后，返回的也是左值引用。相当于是对param做了一个强制转换成左值引用。
+// 左值调用下面这个函数
 template <typename T>
 constexpr T&& forward(typename std::remove_reference<T>::type& param) // 这里先去掉引用再加上&,是为了规避折叠，让参数始终是左值引用
 {
     return static_cast<T&&>(param);
 }
 
-// 对于右值调用下面这个函数，T的类型就是param本身，相当于强制转换成右值引用。
+// 对于右值调用下面这个函数
 template <typename T>
-constexpr T&& forward(typename std::remove_reference<T>::type&& param)
+constexpr T&& forward(typename std::remove_reference<T>::type&& param) noexcept
 {
+    static_assert(!std::is_lvalue_reference_v<T>,
+                  "cannot forward an rvalue as an lvalue");
     return static_cast<T&&>(param);
 }
 ```
@@ -383,6 +385,49 @@ constexpr T&& forward(typename std::remove_reference<T>::type&& param)
 经过`forward`的转换过后，就可以完美匹配`print`的左值右值版本了。**引用折叠并不局限于某一个位置，凡是模板替换后产生“引用的引用”的地方都会触发**
 
 整个这样一个流程就实现了**完美转发**。
+
+**例子**：
+
+- 有wrapper的情况
+
+对于大部分情况forward都只会使用`std::forward`的第一个函数：例如上面的例子：
+
+```c++
+template<typename T>
+void testForward(T && v){
+    print(std::forward<T>(v));
+}
+```
+
+`testForward(42)` 
+
+此时`T`会被推断为`int`，v的类型是`int&&`，T是左值匹配第一个函数，`param`的类型是`int&`，强制转换与返回值：`T&&` -> `int&&`，最终匹配print的右值版本。
+
+`testForward(x)`
+
+此时`T`会被推断为`int&`，v的类型是`int& &&` -> `int&` ，T是左值匹配第一个函数，`param`的类型是`int&`，强制转换与返回值：`T&&` -> `int& &&` -> `int&`，最终匹配print的左值版本。
+
+在这里param的类型是一样的，其主要作用是区分**直接调用**的左右值。
+
+- 直接调用
+
+```c++
+std::forward<int>(42);              // 字面量 42 是右值
+std::forward<int>(getInt());        // 返回值是右值
+std::forward<int>(std::move(x));    // move 的结果是右值
+```
+
+这个时候才会匹配第二个函数：
+
+其主要作用是**禁用一种危险的误用**：
+
+```c++
+std::forward<int&>(42);   // 试图把右值 42 转成 int& 转发出去
+```
+
+如果此时只有第一种写法，此时的参数会匹配不上，报错信息晦涩，这样匹配上第二个函数以后，用一个static_assert给出一个清晰的报错信息。
+
+---
 
 **push_back与emplace_back**
 
