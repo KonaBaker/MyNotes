@@ -1,6 +1,12 @@
-**function template**
+template
 
+我们提供足够的信息将蓝图转换为特定的类或者函数，这种转换发生在编译时。
 
+# Define
+
+## function template
+
+`template <template args, ...>`  template后面跟一个模板参数列表。**模板参数列表不能为空**。
 
 ```
 template<typename T>
@@ -13,9 +19,99 @@ int main()
 }
 ```
 
-支持显式调用和自动推导。例如stl库就是通过模板编程来实现的。
+调用的时候，编译器通过函数实参来为我们推断模板实参，用它来为我们实例化一个特定版本的函数，在实例化的过程中它会用实际的实参来替代模板参数，创建出一个“新**实例**”。
 
-在编译过程中，模板函数会被实例化，根据调用类型生成对应的实体。
+### type parameters
+
+模板类型参数前必须使用关键字class或typename（在模板参数列表中，这两周没有什么区别）
+
+```c++
+template<typename T, class U> T calc(const T&, const U&);
+template<typename T, U> // x
+```
+
+### non-type parameters
+
+模板中还可以定义nontype parameter表示一个值而非一个类型，通过一个特定类型名来指定。当一个模板实例化时，非类型参数被一个用户提供的或者编译器推断出的值所替代，这些值必须是constexpr。
+
+- 编译器常量的整型
+
+`int` `size_t` `bool` `enum`
+
+```c++
+// 用整型 N 描述一个编译期固定大小的数组
+template <typename T, std::size_t N>
+struct Array {
+    T data[N];                 // N 在编译期已知，合法
+    std::size_t size() const { return N; }
+};
+
+Array<int, 4> a;            // ✅ 字面量 4 是常量表达式
+constexpr int N = 4;
+Array<int, N> b;            // ✅ constexpr 变量也是常量表达式
+
+int n = 4;
+Array<int, n> c;            // ❌ 运行期变量，非常量表达式
+```
+
+- 指针（指向静态生存期的对象/函数）
+
+```c++
+// —— 指向全局对象的指针 ——
+int global_val = 99;          // 全局变量，静态生存期
+
+template <int* P>
+struct Ref {
+    int get() { return *P; }
+};
+
+Ref<&global_val> r;           // ✅ 全局变量地址，编译期已知
+
+int local = 5;
+Ref<&local> r2;              // ❌ 局部变量无静态生存期
+
+// —— 指向函数的指针 ——
+void greet() { /* ... */ }
+
+template <void(*F)()>
+struct Caller {
+    void run() { F(); }       // 编译期绑定函数指针
+};
+
+Caller<greet> c;
+c.run();                     // ✅ 调用 greet()
+```
+
+- 引用（指向静态生存期对象）
+
+```c++
+int global_x = 10;
+
+template <int& R>
+struct Modifier {
+    void increment() { R++; }  // 直接操作引用对象
+    int  value()     { return R; }
+};
+
+Modifier<global_x> m;
+m.increment();               // ✅ global_x 变为 11
+
+// 引用 vs 指针：语法更干净，无需解引用 *
+// 但底层要求完全一样：对象必须有静态生存期
+
+int local_y = 5;
+Modifier<local_y> m2;        // ❌ 局部变量，生存期不够
+```
+
+
+
+
+
+
+
+
+
+
 
 #### 两阶段编译检查
 
