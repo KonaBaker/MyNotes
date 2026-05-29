@@ -9,7 +9,7 @@
 > NVIDIA Vulkan Compute Mipmaps Sample [见https://github.com/nvpro-samples/vk_compute_mipmaps/blob/main/docs/strategy.md.html]
 
 - 一级mipmap的输出可以立即用作下一级mipmap的输入，在单次dispatch中连续生成多个层级，最小化同步的开销，减小barrier的使用（每N个层级使用1个barrier）
-- 并且可以保存到 shared memory/L1 cache甚至是register file。通过shuffle操作给另一个warp的core。减少访存的开销。
+- 并且可以保存到 shared memory/L1 cache甚至是register file。减少访存的开销。
 
 ## 两种管线
 
@@ -134,7 +134,7 @@ $$
 ### complication
 二次幂尺寸的优点就在于，每个采样点在生成下一层级的时候仅会被采样一次。
 
-非二次幂尺寸，有的采样点取药被采样多次，例如：5x5缩减到2x2
+非二次幂尺寸，有的采样点取要被采样多次，例如：5x5缩减到2x2
 
 ```
 +---+---+---+---+---+        +---------+---------+
