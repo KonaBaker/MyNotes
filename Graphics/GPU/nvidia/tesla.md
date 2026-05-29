@@ -136,6 +136,13 @@ block包含多少线程是写死的，也是协作发生的组织单位(CTA， c
 
 虽然可以自由配置，本质是相同的硬件单元，但是shared memory是**编程模型中显式可见的**，L1cache是**硬件缓存层次**。
 
+从 Volta 之后(Turing/Ampere/Ada/Hopper 都是),**L1 data cache 和 shared memory 是同一块物理 SRAM**,但它们是两个**逻辑上独立、用途不同**的东西,中间可以配置一个分配比例(carveout):
+
+- **Shared memory** 是一块**程序员显式管理的便笺存储(scratchpad)**,按 **thread block(workgroup/CTA)** 分配,block 内所有线程共享。它不是任何东西的"缓存",数据是你自己手动 load/store 进去的。它是 block 级别的——这点你说对了。
+- **L1 cache** 是**硬件自动管理的缓存**,缓存的是 **global/local memory 的访问**(也就是缓存从 L2/显存来的数据)。它不是"shared memory 的缓存",反过来也不是。
+
+它俩只是共用同一块物理 SRAM,是平级关系,不是包含或缓存关系。
+
 共享内存肯定比主存和L2 cache快。
 
 对一个block内的所有线程可见。这意味着**一个block内所有线程必定位于同一个SM中**，所以一个block内线程数也是由限制的，因为一个SM容纳的warp也是有限的。
