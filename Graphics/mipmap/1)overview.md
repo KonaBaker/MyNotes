@@ -33,13 +33,34 @@ float rho = max(length(dx), length(dy));
 float lod = log2(rho);
 ```
 
-mipmap 层级的核心是看当前一个屏幕像素在纹理空间覆盖了多大区域。在 shader 里通常通过纹理坐标对屏幕坐标的偏导数 `dFdx`、`dFdy` 来估计这个覆盖范围。 如果纹理大小是 `W,H`，先把导数换算到 texel 空间，再取 `rho = max(length(dudx * texSize), length(dudy * texSize))`， 然后 `lod = log2(rho)`。 `lod=0` 表示用原始纹理，`lod=1` 表示用 1/2 分辨率那层，以此类推。 硬件通常在 fragment quad 上自动求导，普通 `texture()` 会自动算 LOD； 软光栅则需要自己算属性导数、自己做 mip 选择和 trilinear 插值。
+mipmap 层级的核心是看当前一个屏幕像素在纹理空间覆盖了多大区域。在 shader 里通常通过纹理坐标对屏幕坐标的偏导数 `dFdx`、`dFdy` 来估计这个覆盖范围。 执行FS的最小单位不是单个像素，而是一个2x2quad，跑在同一个warp上，各自持有自己的uv值。
+
+`dudx = uv[lane_right] - uv[lane_self]`通过读取相邻lane的寄存器值做差，无内存访问。
+
+如果纹理大小是 `W,H`，先把导数（uv 本身是[0,1]的）换算到 texel 空间，表示屏幕向上移动一个像素，对应纹理上移动了多少个纹素。
+
+再取 `float rho = max(length(dx), length(dy));` 然后 `lod = log2(rho)`。
+
+ `lod=0` 表示用原始纹理，`lod=1` 表示用 1/2 分辨率那层，以此类推。 硬件通常在 fragment quad 上自动求导，普通 `texture()` 会自动算 LOD； 
+
+软光栅则需要自己算属性导数、自己做 mip 选择和 trilinear 插值。
 
 **Notes**:
 
 1. 只有在fragment shader里面这样才可以，因为dFdx依赖相邻像素信息，而fragment shader是以2x2quad为一组进行计算的。
 
-2. 这里的uv不能在屏幕空间插值，因为透视除法过了，对于顶点属性，应该进行透视矫正，在原3D空间进行插值。主要用于自己做光栅化的时候：
+2. 这里的uv（顶点上绑定的uv）不能在屏幕空间插值，因为透视除法过了，对于顶点属性，应该进行透视矫正，在原3D空间进行插值。主要用于自己做光栅化的时候：
+
+   这一步是**硬件自动完成**的，在光栅化阶段，所有 `in` 变量（包括 uv）默认都经过透视矫正插值。GLSL 中的 `smooth`（默认）关键字就代表这个行为：
+
+   glsl
+
+   ```glsl
+   // 这两种写法等价，smooth 是默认值
+   smooth in vec2 uv;  // 透视矫正插值 ✅
+          in vec2 uv;  // 同上
+   ```
+
    插值
 
    ```
